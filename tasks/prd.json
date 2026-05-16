@@ -67,7 +67,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-002 and US-003. The chip color logic lives in SignInScreenContent: derive chip colors from a when(uiState) expression — use ButtonDefaults.outlinedButtonColors() for Idle/Loading, and a copy with errorContainer for Error state."
     },
     {

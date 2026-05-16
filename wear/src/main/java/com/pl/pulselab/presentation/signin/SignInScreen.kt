@@ -13,6 +13,7 @@ import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.material3.Button
+import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
@@ -83,6 +84,16 @@ fun SignInScreenContent(
     onPasswordChipClick: () -> Unit,
     onSignIn: () -> Unit
 ) {
+    val isError = uiState is SignInUiState.Error
+    val passwordChipColors = if (isError) {
+        ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
+        )
+    } else {
+        ButtonDefaults.outlinedButtonColors()
+    }
+
     AppScaffold {
         val listState = rememberTransformingLazyColumnState()
         ScreenScaffold(scrollState = listState) { contentPadding ->
@@ -116,7 +127,8 @@ fun SignInScreenContent(
                 item {
                     OutlinedButton(
                         onClick = onPasswordChipClick,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = passwordChipColors
                     ) {
                         Text(if (passwordValue.isEmpty()) "Password" else "•".repeat(passwordValue.length))
                     }

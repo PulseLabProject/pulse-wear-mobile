@@ -42,6 +42,17 @@
   - `tokenResult.value` returns the JWT string (may be null/empty even on Success if no session)
 ---
 
+## 2026-05-16 - [login-screen-usability] US-004
+- Password chip uses `ButtonDefaults.buttonColors(containerColor = errorContainer, contentColor = onErrorContainer)` when UiState is Error; defaults to `ButtonDefaults.outlinedButtonColors()` otherwise
+- Password StateFlow already cleared to "" on ClerkResult.Failure (implemented in US-002's ViewModel rewrite)
+- UiState returns to Idle when `onPasswordChange` is called (implemented in US-003's ViewModel rewrite)
+- Clerk failure error Text already rendered below password chip via `when (uiState) is Error` block
+- Files changed: SignInScreen.kt, tasks/prd.json, progress.txt
+- **Learnings for future iterations:**
+  - `wear.compose.material3.ButtonDefaults.outlinedButtonColors()` has NO `containerColor` param (OutlinedButton is always transparent in Wear) — use `ButtonDefaults.buttonColors(containerColor=...)` when you need a filled error state
+  - Deriving chip color in the composable scope (before the lazy column) is cleanest — compute once, pass to item
+---
+
 ## 2026-05-16 - [login-screen-usability] US-003
 - Added `emailError` and `passwordError` MutableStateFlow<String?> to SignInViewModel, exposed as StateFlow
 - Added `validate()` method: checks blank email → "Email is required", missing '@' → "Enter a valid email address", blank password → "Password is required"; returns Boolean
