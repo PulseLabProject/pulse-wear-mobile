@@ -42,6 +42,20 @@
   - `tokenResult.value` returns the JWT string (may be null/empty even on Success if no session)
 ---
 
+## 2026-05-16 - [login-screen-usability] US-005
+- Added `CompactButton` labelled "Use phone" below Sign In button in SignInScreenContent
+- Button disabled (`enabled = !isLoading`) while SignInUiState is Loading
+- Tapping calls `RemoteActivityHelper(context, ContextCompat.getMainExecutor(context)).startRemoteActivity(Intent("com.pl.pulselab.SIGN_IN"), null)`; try/catch around both construction and `future.addListener` result to catch failures
+- On failure: sets `showPhoneError = true`; `LaunchedEffect(showPhoneError)` delays 3000ms then resets to false; error Text "Phone not available" shown in error color while true
+- Added `<intent-filter>` for `com.pl.pulselab.SIGN_IN` to `app/src/main/AndroidManifest.xml`
+- Files changed: SignInScreen.kt, app/src/main/AndroidManifest.xml, tasks/prd.json, progress.txt
+- **Learnings for future iterations:**
+  - `RemoteActivityHelper(context, executor)` requires an `Executor` — use `ContextCompat.getMainExecutor(context)` for simplicity
+  - `startRemoteActivity` returns `ListenableFuture<Void>` — failures surface via `future.addListener` + `future.get()` in the callback, not via direct throw
+  - `CompactButton` is in `androidx.wear.compose.material3` — same package as other Wear buttons
+  - `LaunchedEffect(showPhoneError)` is keyed on the state so it re-runs every time showPhoneError flips to true
+---
+
 ## 2026-05-16 - [login-screen-usability] US-004
 - Password chip uses `ButtonDefaults.buttonColors(containerColor = errorContainer, contentColor = onErrorContainer)` when UiState is Error; defaults to `ButtonDefaults.outlinedButtonColors()` otherwise
 - Password StateFlow already cleared to "" on ClerkResult.Failure (implemented in US-002's ViewModel rewrite)

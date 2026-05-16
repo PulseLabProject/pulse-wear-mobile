@@ -84,7 +84,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-001 (wear-remote-interactions). RemoteActivityHelper requires a Context — obtain via LocalContext.current inside SignInScreenContent. The intent action string 'com.pl.pulselab.SIGN_IN' must match exactly between the wear launcher and the phone manifest filter."
     }
   ]
