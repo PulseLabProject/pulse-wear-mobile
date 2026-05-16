@@ -32,7 +32,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-001. Use combine(Clerk.isInitialized, Clerk.sessionFlow) in AuthViewModel — same pattern as the linear-clone sample MainViewModel. No navigation library needed: a simple when(uiState) in setContent is sufficient for two screens."
     },
     {
@@ -51,7 +51,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-002. Use BasicTextField from androidx.compose.foundation for text input — androidx.wear.compose.material3 at v1.5.6 does not expose a stable TextField composable. Import PasswordVisualTransformation from androidx.compose.ui.text.input."
     },
     {
@@ -66,7 +66,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-001. OkHttp interceptors run on background I/O threads, so runBlocking is safe here and will not block the UI thread. Clerk.auth.getToken() uses a cached token and only hits the network when the token is expired (~60s lifetime), so the overhead per request is negligible."
     }
   ]

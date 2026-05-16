@@ -1,3 +1,47 @@
+## 2026-05-16 - US-002
+- What was implemented:
+  - Created `AuthViewModel.kt` in `presentation/` — combines `Clerk.isInitialized` and `Clerk.sessionFlow` into a sealed `AuthUiState` (Loading/SignedOut/SignedIn)
+  - Updated `MainActivity.kt` to observe `AuthViewModel.uiState` and render `CircularProgressIndicator` (Loading), `SignInScreen()` (SignedOut), or `HomeScreen()` (SignedIn)
+  - Created stub `SignInScreen.kt` in `presentation/signin/` (content added in US-003)
+- Files changed:
+  - wear/src/main/java/com/pl/pulselab/presentation/AuthViewModel.kt (new)
+  - wear/src/main/java/com/pl/pulselab/presentation/MainActivity.kt
+  - wear/src/main/java/com/pl/pulselab/presentation/signin/SignInScreen.kt (stub)
+- **Learnings for future iterations:**
+  - `Clerk.isInitialized` is a property (StateFlow<Boolean?>), NOT a function — do NOT call with `()`
+  - `Clerk.sessionFlow` is `StateFlow<Session?>` (nullable Session)
+  - Must use explicit lambda param types in `combine` for Kotlin type inference to work: `{ initialized: Boolean?, session: Session? -> ... }`
+  - Use `initialized != true` (not `!initialized`) because the type is `Boolean?`
+---
+
+## 2026-05-16 - US-003
+- What was implemented:
+  - Created `SignInViewModel.kt` in `presentation/signin/` with `signIn(email, password)` calling `Clerk.auth.signInWithPassword { identifier = email; this.password = password }`
+  - `SignInViewModel` exposes sealed `SignInUiState` (Idle/Loading/Error)
+  - Updated `SignInScreen.kt` with full UI: `BasicTextField` for email, `BasicTextField` with `PasswordVisualTransformation` for password, `CircularProgressIndicator` when loading, error `Text` on failure, `Button` to trigger sign-in — all inside `TransformingLazyColumn`
+- Files changed:
+  - wear/src/main/java/com/pl/pulselab/presentation/signin/SignInViewModel.kt (new)
+  - wear/src/main/java/com/pl/pulselab/presentation/signin/SignInScreen.kt (replaced stub)
+- **Learnings for future iterations:**
+  - `Clerk.auth.signInWithPassword { identifier = email; this.password = password }` — use `this.password` to avoid shadowing the lambda parameter
+  - Error message from `ClerkResult.Failure`: `result.error?.errors?.firstOrNull()?.message`
+  - `BasicTextField` from `androidx.compose.foundation.text` — NOT from wear.compose; wear.compose.material3 1.5.6 lacks a stable TextField
+  - `PasswordVisualTransformation` from `androidx.compose.ui.text.input`
+---
+
+## 2026-05-16 - US-004
+- What was implemented:
+  - Updated `ApiRepository.kt` OkHttp interceptor to call `runBlocking { Clerk.auth.getToken() }` on every request
+  - `ClerkResult.Success` → add `Authorization: Bearer <jwt>` header
+  - `ClerkResult.Failure` → log warning with `Log.w`, proceed without header
+- Files changed:
+  - wear/src/main/java/com/pl/pulselab/data/network/ApiRepository.kt
+- **Learnings for future iterations:**
+  - `Clerk.auth.getToken()` can be called with no args (uses default `GetTokenOptions()`)
+  - `runBlocking` is safe in OkHttp interceptors (runs on I/O thread, not UI thread)
+  - `tokenResult.value` returns the JWT string (may be null/empty even on Success if no session)
+---
+
 ## Codebase Patterns
 - Clerk SDK package is `com.clerk.api` (not `com.clerk.android`) — artifact `com.clerk:clerk-android-api`
 - Clerk.initialize is called on the singleton INSTANCE: `Clerk.initialize(context, publishableKey)`
