@@ -1,0 +1,28 @@
+## Codebase Patterns
+- Clerk SDK package is `com.clerk.api` (not `com.clerk.android`) — artifact `com.clerk:clerk-android-api`
+- Clerk.initialize is called on the singleton INSTANCE: `Clerk.initialize(context, publishableKey)`
+- JAVA_HOME must be set to `/opt/android-studio/jbr` to run Gradle on this machine
+- local.properties is the right place for secrets (CLERK_PUBLISHABLE_KEY); already gitignored
+- Build requires `import java.util.Properties` at top of build.gradle.kts when reading local.properties
+- libs.versions.toml alias for `clerk-android-api` resolves to `libs.clerk.android.api` (dots → hyphens in alias name)
+
+---
+
+## 2026-05-16 - US-001
+- What was implemented:
+  - Added `clerkAndroid = "1.0.16"` version and `clerk-android-api` library entry to `gradle/libs.versions.toml`
+  - Updated `wear/build.gradle.kts`: bumped Java source/target from 11 → 17, enabled `buildConfig = true`, added `CLERK_PUBLISHABLE_KEY` BuildConfig field read from `local.properties`, added Clerk SDK dependency
+  - Added placeholder `CLERK_PUBLISHABLE_KEY=pk_test_placeholder` to `local.properties` (not committed)
+  - Created `wear/src/main/java/com/pl/pulselab/PulseLabApp.kt` — Application subclass calling `Clerk.initialize(this, BuildConfig.CLERK_PUBLISHABLE_KEY)`
+  - Updated `wear/src/main/AndroidManifest.xml` to set `android:name=".PulseLabApp"` on `<application>`
+- Files changed:
+  - gradle/libs.versions.toml
+  - wear/build.gradle.kts
+  - wear/src/main/AndroidManifest.xml
+  - wear/src/main/java/com/pl/pulselab/PulseLabApp.kt
+- **Learnings for future iterations:**
+  - Clerk package is `com.clerk.api`, not `com.clerk.android` — confirmed by inspecting the API jar
+  - `Clerk.initialize(context, key)` takes android.content.Context as first arg
+  - `./gradlew :wear:assembleDebug` must be prefixed with `JAVA_HOME=/opt/android-studio/jbr`
+  - `initialize$default` in javap decompile maps to Kotlin's `Clerk.initialize(ctx, key)` call
+---

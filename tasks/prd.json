@@ -18,7 +18,7 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Clerk SDK requires minSdk 24 — wear module is minSdk 30, no conflict. Java must be bumped to 17 or the SDK will fail to compile. The publishable key starts with pk_test_ (dev) or pk_live_ (prod); never commit it — local.properties is already gitignored."
     },
     {
