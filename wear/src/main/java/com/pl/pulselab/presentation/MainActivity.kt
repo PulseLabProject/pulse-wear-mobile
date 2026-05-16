@@ -3,22 +3,40 @@ package com.pl.pulselab.presentation
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.wear.compose.material3.CircularProgressIndicator
 import com.pl.pulselab.presentation.home.HomeScreen
+import com.pl.pulselab.presentation.signin.SignInScreen
 import com.pl.pulselab.presentation.theme.PulseLabTheme
 
-// MainActivity is intentionally minimal — its only job is to bootstrap the app.
-// All screen logic lives in HomeScreen + HomeViewModel.
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Show the splash screen defined in res/drawable/splash_icon.xml while the app loads
         installSplashScreen()
         super.onCreate(savedInstanceState)
         setContent {
             PulseLabTheme {
-                // Entry point of the UI. Swap HomeScreen() for a NavHost here
-                // when you add multiple screens later.
-                HomeScreen()
+                val authViewModel: AuthViewModel = viewModel()
+                val authState by authViewModel.uiState.collectAsState()
+
+                when (authState) {
+                    is AuthUiState.Loading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    is AuthUiState.SignedOut -> SignInScreen()
+                    is AuthUiState.SignedIn -> HomeScreen()
+                }
             }
         }
     }
