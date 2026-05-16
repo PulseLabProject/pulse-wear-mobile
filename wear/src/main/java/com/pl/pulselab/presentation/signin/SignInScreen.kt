@@ -29,6 +29,8 @@ fun SignInScreen(viewModel: SignInViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val emailValue by viewModel.email.collectAsState()
     val passwordValue by viewModel.password.collectAsState()
+    val emailError by viewModel.emailError.collectAsState()
+    val passwordError by viewModel.passwordError.collectAsState()
 
     val emailLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -48,6 +50,8 @@ fun SignInScreen(viewModel: SignInViewModel = viewModel()) {
         uiState = uiState,
         emailValue = emailValue,
         passwordValue = passwordValue,
+        emailError = emailError,
+        passwordError = passwordError,
         onEmailChipClick = {
             val remoteInput = RemoteInput.Builder(KEY_EMAIL).setLabel("Enter email").build()
             val intent = RemoteInputIntentHelper.createActionRemoteInputIntent() ?: return@SignInScreenContent
@@ -60,7 +64,11 @@ fun SignInScreen(viewModel: SignInViewModel = viewModel()) {
             RemoteInputIntentHelper.putRemoteInputsExtra(intent, listOf(remoteInput))
             passwordLauncher.launch(intent)
         },
-        onSignIn = { viewModel.signIn() }
+        onSignIn = {
+            if (viewModel.validate()) {
+                viewModel.signIn()
+            }
+        }
     )
 }
 
@@ -69,6 +77,8 @@ fun SignInScreenContent(
     uiState: SignInUiState,
     emailValue: String,
     passwordValue: String,
+    emailError: String?,
+    passwordError: String?,
     onEmailChipClick: () -> Unit,
     onPasswordChipClick: () -> Unit,
     onSignIn: () -> Unit
@@ -93,12 +103,32 @@ fun SignInScreenContent(
                     }
                 }
 
+                if (emailError != null) {
+                    item {
+                        Text(
+                            text = emailError,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+
                 item {
                     OutlinedButton(
                         onClick = onPasswordChipClick,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(if (passwordValue.isEmpty()) "Password" else "•".repeat(passwordValue.length))
+                    }
+                }
+
+                if (passwordError != null) {
+                    item {
+                        Text(
+                            text = passwordError,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
 

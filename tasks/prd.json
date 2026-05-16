@@ -51,7 +51,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-002. Validation runs inside the onSignIn lambda in SignInScreen before delegating to the ViewModel. Keep validation logic in the ViewModel (validate() method) so it is testable. Email regex: just check contains('@') — full RFC validation is overkill here."
     },
     {

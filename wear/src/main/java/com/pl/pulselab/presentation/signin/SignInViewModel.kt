@@ -26,12 +26,47 @@ class SignInViewModel : ViewModel() {
     private val _password = MutableStateFlow("")
     val password: StateFlow<String> = _password.asStateFlow()
 
+    private val _emailError = MutableStateFlow<String?>(null)
+    val emailError: StateFlow<String?> = _emailError.asStateFlow()
+
+    private val _passwordError = MutableStateFlow<String?>(null)
+    val passwordError: StateFlow<String?> = _passwordError.asStateFlow()
+
     fun onEmailChange(value: String) {
         _email.value = value
+        _emailError.value = null
     }
 
     fun onPasswordChange(value: String) {
         _password.value = value
+        _passwordError.value = null
+        if (_uiState.value is SignInUiState.Error) {
+            _uiState.value = SignInUiState.Idle
+        }
+    }
+
+    fun validate(): Boolean {
+        val emailVal = _email.value
+        val passwordVal = _password.value
+        var valid = true
+        when {
+            emailVal.isBlank() -> {
+                _emailError.value = "Email is required"
+                valid = false
+            }
+            !emailVal.contains('@') -> {
+                _emailError.value = "Enter a valid email address"
+                valid = false
+            }
+            else -> _emailError.value = null
+        }
+        if (passwordVal.isBlank()) {
+            _passwordError.value = "Password is required"
+            valid = false
+        } else {
+            _passwordError.value = null
+        }
+        return valid
     }
 
     fun signIn() {

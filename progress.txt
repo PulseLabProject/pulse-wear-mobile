@@ -42,6 +42,18 @@
   - `tokenResult.value` returns the JWT string (may be null/empty even on Success if no session)
 ---
 
+## 2026-05-16 - [login-screen-usability] US-003
+- Added `emailError` and `passwordError` MutableStateFlow<String?> to SignInViewModel, exposed as StateFlow
+- Added `validate()` method: checks blank email → "Email is required", missing '@' → "Enter a valid email address", blank password → "Password is required"; returns Boolean
+- `onEmailChange` clears emailError; `onPasswordChange` clears passwordError and resets Error state to Idle
+- SignInScreen's `onSignIn` calls `viewModel.validate()` first; only calls `viewModel.signIn()` if valid
+- Validation error Text items shown below respective chips using MaterialTheme.colorScheme.error
+- Files changed: SignInViewModel.kt, SignInScreen.kt, tasks/prd.json, progress.txt
+- **Learnings for future iterations:**
+  - `validate()` returns Boolean — screen checks it before calling signIn(); keeps validation testable in ViewModel
+  - `onPasswordChange` transitions Error→Idle so chip color resets when user re-enters password (doubles as US-004 behavior)
+---
+
 ## 2026-05-16 - [login-screen-usability] US-002
 - Replaced BasicTextField email/password inputs with OutlinedButton RemoteInput chips in SignInScreen.kt
 - SignInViewModel now exposes `email` and `password` as StateFlow<String> with `onEmailChange`/`onPasswordChange` functions; `signIn()` reads from those state flows
