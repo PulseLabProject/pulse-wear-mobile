@@ -20,19 +20,35 @@ class SignInViewModel : ViewModel() {
     private val _uiState = MutableStateFlow<SignInUiState>(SignInUiState.Idle)
     val uiState: StateFlow<SignInUiState> = _uiState.asStateFlow()
 
-    fun signIn(email: String, password: String) {
+    private val _email = MutableStateFlow("")
+    val email: StateFlow<String> = _email.asStateFlow()
+
+    private val _password = MutableStateFlow("")
+    val password: StateFlow<String> = _password.asStateFlow()
+
+    fun onEmailChange(value: String) {
+        _email.value = value
+    }
+
+    fun onPasswordChange(value: String) {
+        _password.value = value
+    }
+
+    fun signIn() {
+        val emailVal = _email.value
+        val passwordVal = _password.value
         _uiState.value = SignInUiState.Loading
         viewModelScope.launch {
             val result = Clerk.auth.signInWithPassword {
-                identifier = email
-                this.password = password
+                identifier = emailVal
+                this.password = passwordVal
             }
             when (result) {
                 is ClerkResult.Success -> {
-                    // Session flow in AuthViewModel picks up the change automatically.
                     _uiState.value = SignInUiState.Idle
                 }
                 is ClerkResult.Failure -> {
+                    _password.value = ""
                     val msg = result.error?.errors?.firstOrNull()?.message
                         ?: result.throwable?.message
                         ?: "Sign in failed"

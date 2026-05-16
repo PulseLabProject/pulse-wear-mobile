@@ -42,6 +42,19 @@
   - `tokenResult.value` returns the JWT string (may be null/empty even on Success if no session)
 ---
 
+## 2026-05-16 - [login-screen-usability] US-002
+- Replaced BasicTextField email/password inputs with OutlinedButton RemoteInput chips in SignInScreen.kt
+- SignInViewModel now exposes `email` and `password` as StateFlow<String> with `onEmailChange`/`onPasswordChange` functions; `signIn()` reads from those state flows
+- Launchers created with `rememberLauncherForActivityResult` at composable scope; result extracted via `android.app.RemoteInput.getResultsFromIntent`
+- Password chip displays bullet characters (•) matching password length; never pre-populates
+- Files changed: wear/src/main/java/com/pl/pulselab/presentation/signin/SignInScreen.kt, SignInViewModel.kt, tasks/prd.json
+- **Learnings for future iterations:**
+  - `RemoteInputIntentHelper.putRemoteInputsExtra` expects `List<android.app.RemoteInput>` (platform type), NOT `androidx.core.app.RemoteInput`
+  - `RemoteInput.getResultsFromIntent` (android.app) works fine for extracting results — no need to mix in the AndroidX compat version
+  - `RemoteInputIntentHelper.createActionRemoteInputIntent()` returns nullable `Intent?` — must null-check before launch
+  - Use `return@SignInScreenContent` as non-local return label inside lambda callbacks that pass through composable functions
+---
+
 ## 2026-05-16 - [login-screen-usability] US-001
 - Added `wearInput = "1.2.0"` and `wearRemoteInteractions = "1.2.0"` to [versions] in gradle/libs.versions.toml
 - Added `androidx-wear-input` and `androidx-wear-remote-interactions` library entries to [libraries] in gradle/libs.versions.toml

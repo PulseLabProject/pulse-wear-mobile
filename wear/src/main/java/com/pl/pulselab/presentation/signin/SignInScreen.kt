@@ -1,15 +1,13 @@
 package com.pl.pulselab.presentation.signin
 
+import android.app.RemoteInput
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
@@ -18,32 +16,61 @@ import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.OutlinedButton
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
+import androidx.wear.input.RemoteInputIntentHelper
+
+private const val KEY_EMAIL = "email_input"
+private const val KEY_PASSWORD = "password_input"
 
 @Composable
 fun SignInScreen(viewModel: SignInViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsState()
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    val emailValue by viewModel.email.collectAsState()
+    val passwordValue by viewModel.password.collectAsState()
+
+    val emailLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val bundle = RemoteInput.getResultsFromIntent(result.data)
+        bundle?.getString(KEY_EMAIL)?.let { viewModel.onEmailChange(it) }
+    }
+
+    val passwordLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val bundle = RemoteInput.getResultsFromIntent(result.data)
+        bundle?.getString(KEY_PASSWORD)?.let { viewModel.onPasswordChange(it) }
+    }
 
     SignInScreenContent(
         uiState = uiState,
-        email = email,
-        password = password,
-        onEmailChange = { email = it },
-        onPasswordChange = { password = it },
-        onSignIn = { viewModel.signIn(email, password) }
+        emailValue = emailValue,
+        passwordValue = passwordValue,
+        onEmailChipClick = {
+            val remoteInput = RemoteInput.Builder(KEY_EMAIL).setLabel("Enter email").build()
+            val intent = RemoteInputIntentHelper.createActionRemoteInputIntent() ?: return@SignInScreenContent
+            RemoteInputIntentHelper.putRemoteInputsExtra(intent, listOf(remoteInput))
+            emailLauncher.launch(intent)
+        },
+        onPasswordChipClick = {
+            val remoteInput = RemoteInput.Builder(KEY_PASSWORD).setLabel("Enter password").build()
+            val intent = RemoteInputIntentHelper.createActionRemoteInputIntent() ?: return@SignInScreenContent
+            RemoteInputIntentHelper.putRemoteInputsExtra(intent, listOf(remoteInput))
+            passwordLauncher.launch(intent)
+        },
+        onSignIn = { viewModel.signIn() }
     )
 }
 
 @Composable
 fun SignInScreenContent(
     uiState: SignInUiState,
-    email: String,
-    password: String,
-    onEmailChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
+    emailValue: String,
+    passwordValue: String,
+    onEmailChipClick: () -> Unit,
+    onPasswordChipClick: () -> Unit,
     onSignIn: () -> Unit
 ) {
     AppScaffold {
@@ -58,30 +85,21 @@ fun SignInScreenContent(
                 }
 
                 item {
-                    BasicTextField(
-                        value = email,
-                        onValueChange = onEmailChange,
-                        modifier = Modifier.fillMaxWidth(),
-                        textStyle = MaterialTheme.typography.bodyMedium,
-                        decorationBox = { inner ->
-                            if (email.isEmpty()) Text("Email", style = MaterialTheme.typography.bodyMedium)
-                            inner()
-                        }
-                    )
+                    OutlinedButton(
+                        onClick = onEmailChipClick,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (emailValue.isEmpty()) "Email" else emailValue)
+                    }
                 }
 
                 item {
-                    BasicTextField(
-                        value = password,
-                        onValueChange = onPasswordChange,
-                        modifier = Modifier.fillMaxWidth(),
-                        textStyle = MaterialTheme.typography.bodyMedium,
-                        visualTransformation = PasswordVisualTransformation(),
-                        decorationBox = { inner ->
-                            if (password.isEmpty()) Text("Password", style = MaterialTheme.typography.bodyMedium)
-                            inner()
-                        }
-                    )
+                    OutlinedButton(
+                        onClick = onPasswordChipClick,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (passwordValue.isEmpty()) "Password" else "•".repeat(passwordValue.length))
+                    }
                 }
 
                 when (val state = uiState) {

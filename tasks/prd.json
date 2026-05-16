@@ -34,7 +34,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-001. androidx.core.app.RemoteInput is in core-ktx; for Wear OS intent wiring use androidx.wear.input.RemoteInputIntentHelper. The launcher must be created with rememberLauncherForActivityResult at the composable call site, not inside a click handler."
     },
     {
