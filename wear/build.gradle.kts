@@ -1,6 +1,13 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+}
+
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
 }
 
 android {
@@ -18,6 +25,11 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        buildConfigField(
+            "String",
+            "CLERK_PUBLISHABLE_KEY",
+            "\"${localProps.getProperty("CLERK_PUBLISHABLE_KEY", "")}\""
+        )
     }
 
     buildTypes {
@@ -30,12 +42,13 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     useLibrary("wear-sdk")
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -62,6 +75,9 @@ dependencies {
 
     // Coroutines — needed for suspend functions and Flow
     implementation(libs.kotlinx.coroutines.android)
+
+    // Clerk — authentication SDK
+    implementation(libs.clerk.android.api)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
