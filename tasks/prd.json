@@ -1,0 +1,73 @@
+{
+  "project": "PulseLab",
+  "branchName": "ralph/clerk-auth",
+  "description": "Add Clerk authentication to the Wear OS app so every heart-rate API request is sent with a valid Clerk JWT token.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Clerk SDK setup and app initialization",
+      "description": "As a developer, I want the Clerk Android SDK initialized at app startup so that authentication APIs are available throughout the wear app.",
+      "acceptanceCriteria": [
+        "wear/build.gradle.kts compiles with Java 17 source and target compatibility (bumped from 11)",
+        "buildFeatures { buildConfig = true } is enabled in wear/build.gradle.kts",
+        "com.clerk:clerk-android-api:1.0.16 is added to gradle/libs.versions.toml and wear/build.gradle.kts",
+        "wear/build.gradle.kts reads CLERK_PUBLISHABLE_KEY from local.properties and exposes it as a BuildConfig field",
+        "PulseLabApp.kt Application subclass calls Clerk.initialize(this, BuildConfig.CLERK_PUBLISHABLE_KEY) in onCreate()",
+        "wear/src/main/AndroidManifest.xml sets android:name=\".PulseLabApp\" on the <application> tag",
+        "./gradlew :wear:assembleDebug completes without error",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Clerk SDK requires minSdk 24 — wear module is minSdk 30, no conflict. Java must be bumped to 17 or the SDK will fail to compile. The publishable key starts with pk_test_ (dev) or pk_live_ (prod); never commit it — local.properties is already gitignored."
+    },
+    {
+      "id": "US-002",
+      "title": "Auth gate: route to SignInScreen or HomeScreen based on session",
+      "description": "As a user, I want the app to show a sign-in screen when I am unauthenticated and the home screen when I am signed in, so heart-rate features are protected.",
+      "acceptanceCriteria": [
+        "AuthViewModel.kt is created in presentation/ and combines Clerk.isInitialized and Clerk.sessionFlow into a sealed UiState (Loading, SignedOut, SignedIn)",
+        "MainActivity observes AuthViewModel.uiState and renders: a CircularProgressIndicator when Loading, SignInScreen() when SignedOut, HomeScreen() when SignedIn",
+        "Signing out from any screen causes the app to return to SignInScreen without a back-stack entry that lets the user navigate back to HomeScreen",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on US-001. Use combine(Clerk.isInitialized, Clerk.sessionFlow) in AuthViewModel — same pattern as the linear-clone sample MainViewModel. No navigation library needed: a simple when(uiState) in setContent is sufficient for two screens."
+    },
+    {
+      "id": "US-003",
+      "title": "Sign-in screen with email and password",
+      "description": "As a user, I want to enter my email and password on the watch to sign in with the same Clerk credentials I use on the web app.",
+      "acceptanceCriteria": [
+        "SignInViewModel.kt is created in presentation/signin/ with signIn(email, password) that calls Clerk.auth.signInWithPassword { identifier = email; password = password }",
+        "SignInViewModel exposes a sealed UiState (Idle, Loading, Error(message))",
+        "SignInScreen.kt renders email and password BasicTextField inputs and a Sign In Button inside a TransformingLazyColumn",
+        "Password field uses PasswordVisualTransformation so the text is masked",
+        "A CircularProgressIndicator replaces the button while UiState is Loading",
+        "A ClerkResult.Failure surfaces the Clerk error message as a visible Text item",
+        "A ClerkResult.Success requires no action in SignInViewModel — Clerk.sessionFlow change triggers the MainActivity gate from US-002",
+        "Verify on Wear OS emulator: entering valid Clerk test credentials and tapping Sign In transitions to HomeScreen",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Depends on US-002. Use BasicTextField from androidx.compose.foundation for text input — androidx.wear.compose.material3 at v1.5.6 does not expose a stable TextField composable. Import PasswordVisualTransformation from androidx.compose.ui.text.input."
+    },
+    {
+      "id": "US-004",
+      "title": "Attach Clerk JWT as Bearer token to all backend requests",
+      "description": "As the backend, I want every heart-rate POST to include a valid Authorization: Bearer header so that unauthenticated requests are rejected.",
+      "acceptanceCriteria": [
+        "ApiRepository's OkHttp interceptor calls runBlocking { Clerk.auth.getToken() } to retrieve the JWT on every request",
+        "A successful getToken() result adds Authorization: Bearer <jwt> to the request headers",
+        "A failed getToken() result (no session, network error) proceeds without the header and logs a warning",
+        "Sending a heart-rate reading with an active Clerk session returns a 2xx response from the backend",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Depends on US-001. OkHttp interceptors run on background I/O threads, so runBlocking is safe here and will not block the UI thread. Clerk.auth.getToken() uses a cached token and only hits the network when the token is expired (~60s lifetime), so the overhead per request is negligible."
+    }
+  ]
+}
