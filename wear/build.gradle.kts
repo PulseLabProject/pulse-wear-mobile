@@ -79,6 +79,10 @@ dependencies {
     // Clerk — authentication SDK
     implementation(libs.clerk.android.api)
 
+    // Wear OS input / remote interactions
+    implementation(libs.androidx.wear.input)
+    implementation(libs.androidx.wear.remote.interactions)
+
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)

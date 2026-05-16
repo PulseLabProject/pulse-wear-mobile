@@ -1,73 +1,91 @@
 {
   "project": "PulseLab",
-  "branchName": "ralph/clerk-auth",
-  "description": "Add Clerk authentication to the Wear OS app so every heart-rate API request is sent with a valid Clerk JWT token.",
+  "branchName": "ralph/login-screen-usability",
+  "description": "Full-polish rewrite of the Wear OS sign-in screen: replace invisible BasicTextField inputs with tappable RemoteInput chips, add validation, phone fallback, and post-failure UX.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Clerk SDK setup and app initialization",
-      "description": "As a developer, I want the Clerk Android SDK initialized at app startup so that authentication APIs are available throughout the wear app.",
+      "title": "Add Wear OS input/remote-interactions dependencies",
+      "description": "As a developer, I need the Wear OS input and remote-interactions libraries available so RemoteInputIntentHelper and RemoteActivityHelper can be used in the sign-in screen.",
       "acceptanceCriteria": [
-        "wear/build.gradle.kts compiles with Java 17 source and target compatibility (bumped from 11)",
-        "buildFeatures { buildConfig = true } is enabled in wear/build.gradle.kts",
-        "com.clerk:clerk-android-api:1.0.16 is added to gradle/libs.versions.toml and wear/build.gradle.kts",
-        "wear/build.gradle.kts reads CLERK_PUBLISHABLE_KEY from local.properties and exposes it as a BuildConfig field",
-        "PulseLabApp.kt Application subclass calls Clerk.initialize(this, BuildConfig.CLERK_PUBLISHABLE_KEY) in onCreate()",
-        "wear/src/main/AndroidManifest.xml sets android:name=\".PulseLabApp\" on the <application> tag",
+        "gradle/libs.versions.toml defines wearInput = \"1.4.0\" under [versions] and androidx-wear-input = { group = \"androidx.wear\", name = \"wear-input\", version.ref = \"wearInput\" } under [libraries]",
+        "gradle/libs.versions.toml defines wearRemoteInteractions = \"1.1.0\" under [versions] and androidx-wear-remote-interactions = { group = \"androidx.wear\", name = \"wear-remote-interactions\", version.ref = \"wearRemoteInteractions\" } under [libraries]",
+        "wear/build.gradle.kts implementation dependencies include libs.androidx.wear.input and libs.androidx.wear.remote.interactions",
         "./gradlew :wear:assembleDebug completes without error",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Clerk SDK requires minSdk 24 — wear module is minSdk 30, no conflict. Java must be bumped to 17 or the SDK will fail to compile. The publishable key starts with pk_test_ (dev) or pk_live_ (prod); never commit it — local.properties is already gitignored."
+      "notes": "Check https://maven.google.com for the latest stable versions of wear-input and wear-remote-interactions before hardcoding versions. Both are Wear OS specific — add only to the :wear module."
     },
     {
       "id": "US-002",
-      "title": "Auth gate: route to SignInScreen or HomeScreen based on session",
-      "description": "As a user, I want the app to show a sign-in screen when I am unauthenticated and the home screen when I am signed in, so heart-rate features are protected.",
+      "title": "Replace BasicTextField inputs with RemoteInput chips",
+      "description": "As a user, I want to tap a visible chip to enter my email and password so that the system keyboard dialog opens and I can actually type on my watch.",
       "acceptanceCriteria": [
-        "AuthViewModel.kt is created in presentation/ and combines Clerk.isInitialized and Clerk.sessionFlow into a sealed UiState (Loading, SignedOut, SignedIn)",
-        "MainActivity observes AuthViewModel.uiState and renders: a CircularProgressIndicator when Loading, SignInScreen() when SignedOut, HomeScreen() when SignedIn",
-        "Signing out from any screen causes the app to return to SignInScreen without a back-stack entry that lets the user navigate back to HomeScreen",
+        "All BasicTextField usages are removed from SignInScreen.kt",
+        "Email and password are each represented by an OutlinedButton (full width) showing placeholder text when empty or the entered value when filled; the password chip shows bullet characters (•••) instead of the raw value",
+        "Tapping the email chip builds a RemoteInput with key 'email_input' and label 'Enter email', constructs an intent via RemoteInputIntentHelper.createActionRemoteInputIntent() with that RemoteInput, and launches it via rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult())",
+        "Tapping the password chip builds a RemoteInput with key 'password_input' and label 'Enter password', and launches it the same way; the password chip never pre-populates with a previous value",
+        "The activity result callback extracts the string via RemoteInput.getResultsFromIntent(result.data)?.getString(key) and stores it in the ViewModel via onEmailChange / onPasswordChange callbacks",
+        "SignInViewModel stores email and password as MutableStateFlow<String> fields (initialized to \"\") and exposes them as StateFlow; SignInScreen.kt observes them to display current chip values",
+        "SignInScreenContent parameter list is updated to accept emailValue: String and passwordValue: String",
+        "./gradlew :wear:assembleDebug completes without error",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Depends on US-001. Use combine(Clerk.isInitialized, Clerk.sessionFlow) in AuthViewModel — same pattern as the linear-clone sample MainViewModel. No navigation library needed: a simple when(uiState) in setContent is sufficient for two screens."
+      "passes": false,
+      "notes": "Depends on US-001. androidx.core.app.RemoteInput is in core-ktx; for Wear OS intent wiring use androidx.wear.input.RemoteInputIntentHelper. The launcher must be created with rememberLauncherForActivityResult at the composable call site, not inside a click handler."
     },
     {
       "id": "US-003",
-      "title": "Sign-in screen with email and password",
-      "description": "As a user, I want to enter my email and password on the watch to sign in with the same Clerk credentials I use on the web app.",
+      "title": "Add client-side validation before sign-in",
+      "description": "As a user, I want to see an immediate inline error if I tap Sign In with blank or malformed fields so that I am not waiting on a network round-trip for an avoidable error.",
       "acceptanceCriteria": [
-        "SignInViewModel.kt is created in presentation/signin/ with signIn(email, password) that calls Clerk.auth.signInWithPassword { identifier = email; password = password }",
-        "SignInViewModel exposes a sealed UiState (Idle, Loading, Error(message))",
-        "SignInScreen.kt renders email and password BasicTextField inputs and a Sign In Button inside a TransformingLazyColumn",
-        "Password field uses PasswordVisualTransformation so the text is masked",
-        "A CircularProgressIndicator replaces the button while UiState is Loading",
-        "A ClerkResult.Failure surfaces the Clerk error message as a visible Text item",
-        "A ClerkResult.Success requires no action in SignInViewModel — Clerk.sessionFlow change triggers the MainActivity gate from US-002",
-        "Verify on Wear OS emulator: entering valid Clerk test credentials and tapping Sign In transitions to HomeScreen",
+        "If email is blank when Sign In is tapped, a Text 'Email is required' appears below the email chip in MaterialTheme.colorScheme.error color; viewModel.signIn() is NOT called",
+        "If password is blank when Sign In is tapped, a Text 'Password is required' appears below the password chip in MaterialTheme.colorScheme.error color; viewModel.signIn() is NOT called",
+        "If email does not contain '@', a Text 'Enter a valid email address' appears below the email chip in error color; viewModel.signIn() is NOT called",
+        "Validation errors are stored as emailError: String? and passwordError: String? in SignInViewModel and exposed as StateFlow",
+        "Tapping the email chip clears emailError; tapping the password chip clears passwordError",
+        "When all fields are valid, viewModel.signIn() is called normally and no validation error Text items are visible",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Depends on US-002. Use BasicTextField from androidx.compose.foundation for text input — androidx.wear.compose.material3 at v1.5.6 does not expose a stable TextField composable. Import PasswordVisualTransformation from androidx.compose.ui.text.input."
+      "passes": false,
+      "notes": "Depends on US-002. Validation runs inside the onSignIn lambda in SignInScreen before delegating to the ViewModel. Keep validation logic in the ViewModel (validate() method) so it is testable. Email regex: just check contains('@') — full RFC validation is overkill here."
     },
     {
       "id": "US-004",
-      "title": "Attach Clerk JWT as Bearer token to all backend requests",
-      "description": "As the backend, I want every heart-rate POST to include a valid Authorization: Bearer header so that unauthenticated requests are rejected.",
+      "title": "Post-failure UX: clear password and highlight error chip",
+      "description": "As a user, I want the password chip to clear and turn red after a failed sign-in so that I know exactly which field to correct without reading a wall of text.",
       "acceptanceCriteria": [
-        "ApiRepository's OkHttp interceptor calls runBlocking { Clerk.auth.getToken() } to retrieve the JWT on every request",
-        "A successful getToken() result adds Authorization: Bearer <jwt> to the request headers",
-        "A failed getToken() result (no session, network error) proceeds without the header and logs a warning",
-        "Sending a heart-rate reading with an active Clerk session returns a 2xx response from the backend",
+        "In SignInViewModel, when ClerkResult.Failure is received in signIn(), the password StateFlow is reset to \"\"",
+        "When SignInUiState is Error, the password chip's container color is set to MaterialTheme.colorScheme.errorContainer and its content color to MaterialTheme.colorScheme.onErrorContainer",
+        "When SignInUiState is Error, the existing error Text from the Clerk failure message remains visible below the password chip",
+        "Tapping the password chip to re-enter (i.e. when a new password_input result arrives) transitions UiState back to Idle, clears the error message, and resets the chip color to its default",
+        "The email chip is NOT highlighted or cleared on sign-in failure",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Depends on US-001. OkHttp interceptors run on background I/O threads, so runBlocking is safe here and will not block the UI thread. Clerk.auth.getToken() uses a cached token and only hits the network when the token is expired (~60s lifetime), so the overhead per request is negligible."
+      "passes": false,
+      "notes": "Depends on US-002 and US-003. The chip color logic lives in SignInScreenContent: derive chip colors from a when(uiState) expression — use ButtonDefaults.outlinedButtonColors() for Idle/Loading, and a copy with errorContainer for Error state."
+    },
+    {
+      "id": "US-005",
+      "title": "Add 'Use phone' fallback button",
+      "description": "As a user whose watch keyboard is unavailable, I want a secondary button that opens sign-in on my paired phone so that I am not blocked.",
+      "acceptanceCriteria": [
+        "A CompactButton labelled 'Use phone' is rendered below the Sign In button in SignInScreenContent, styled as a secondary/outlined action",
+        "Tapping 'Use phone' calls RemoteActivityHelper(context).startRemoteActivity(Intent('com.pl.pulselab.SIGN_IN'), null) wrapped in a try/catch",
+        "If RemoteActivityHelper throws (no paired phone or phone app not installed), a Text 'Phone not available' is shown below the button in MaterialTheme.colorScheme.error color for 3 seconds then hidden (use a LaunchedEffect with delay(3000) to reset state)",
+        "app/src/main/AndroidManifest.xml registers an <intent-filter> for action 'com.pl.pulselab.SIGN_IN' on MainActivity (stub — no actual phone sign-in UI needed yet)",
+        "The 'Use phone' button is disabled (enabled = false) while SignInUiState is Loading",
+        "./gradlew :wear:assembleDebug and ./gradlew :app:assembleDebug both complete without error",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Depends on US-001 (wear-remote-interactions). RemoteActivityHelper requires a Context — obtain via LocalContext.current inside SignInScreenContent. The intent action string 'com.pl.pulselab.SIGN_IN' must match exactly between the wear launcher and the phone manifest filter."
     }
   ]
 }

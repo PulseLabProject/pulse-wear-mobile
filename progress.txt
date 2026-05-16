@@ -42,6 +42,17 @@
   - `tokenResult.value` returns the JWT string (may be null/empty even on Success if no session)
 ---
 
+## 2026-05-16 - [login-screen-usability] US-001
+- Added `wearInput = "1.2.0"` and `wearRemoteInteractions = "1.2.0"` to [versions] in gradle/libs.versions.toml
+- Added `androidx-wear-input` and `androidx-wear-remote-interactions` library entries to [libraries] in gradle/libs.versions.toml
+- Added `implementation(libs.androidx.wear.input)` and `implementation(libs.androidx.wear.remote.interactions)` to wear/build.gradle.kts
+- Files changed: gradle/libs.versions.toml, wear/build.gradle.kts, tasks/prd.json
+- **Learnings for future iterations:**
+  - PRD listed wear-input 1.4.0 but that version does not exist; actual latest stable is 1.2.0 for both wear-input and wear-remote-interactions
+  - Verify versions via `curl https://dl.google.com/dl/android/maven2/androidx/wear/<artifact>/maven-metadata.xml`
+  - Alias `androidx-wear-remote-interactions` in toml resolves to `libs.androidx.wear.remote.interactions` in Gradle
+---
+
 ## Codebase Patterns
 - Clerk SDK package is `com.clerk.api` (not `com.clerk.android`) — artifact `com.clerk:clerk-android-api`
 - Clerk.initialize is called on the singleton INSTANCE: `Clerk.initialize(context, publishableKey)`
