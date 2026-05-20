@@ -1,0 +1,17 @@
+## Codebase Patterns
+- libs.versions.toml is the single source of truth for all dependency versions — never hardcode versions in build.gradle.kts files
+- wear/build.gradle.kts already has play-services-wearable, retrofit2, retrofit2-converter-gson, and kotlinx-coroutines-android; mirror these in app/build.gradle.kts as needed
+- Both modules share applicationId com.pl.pulselab and minSdk 30 — avoid any API below 30
+- Use the wear module's build.gradle.kts as the reference for what dependencies are available
+
+---
+
+## 2026-05-20 - US-001
+- Added `implementation(libs.play.services.wearable)` to app/build.gradle.kts dependencies block
+- Verified libs.versions.toml already had playServicesWearable = "18.0.0" and play-services-wearable library entry
+- Verified wear/build.gradle.kts already had the dependency
+- Files changed: app/build.gradle.kts
+- **Learnings for future iterations:**
+  - libs.versions.toml and wear/build.gradle.kts were already properly set up; only app/build.gradle.kts was missing the dependency
+  - All pre-existing staged changes from prior login-screen work were committed on this branch as part of the first commit
+---

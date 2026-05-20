@@ -1,91 +1,152 @@
 {
   "project": "PulseLab",
-  "branchName": "ralph/login-screen-usability",
-  "description": "Full-polish rewrite of the Wear OS sign-in screen: replace invisible BasicTextField inputs with tappable RemoteInput chips, add validation, phone fallback, and post-failure UX.",
+  "branchName": "ralph/phone-wear-data-pipeline",
+  "description": "Real-time data pipeline from Wear OS watch to phone companion app: watch collects HR, HRV, SpO2 and stress index, transmits via MessageClient, phone displays live readings in StatusScreen and relays each reading to the Node+Postgres backend.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add Wear OS input/remote-interactions dependencies",
-      "description": "As a developer, I need the Wear OS input and remote-interactions libraries available so RemoteInputIntentHelper and RemoteActivityHelper can be used in the sign-in screen.",
+      "title": "Add play-services-wearable to phone module",
+      "description": "As a developer, I need play-services-wearable in the :app module so the phone can participate in the Wearable Data Layer and receive messages from the watch.",
       "acceptanceCriteria": [
-        "gradle/libs.versions.toml defines wearInput = \"1.4.0\" under [versions] and androidx-wear-input = { group = \"androidx.wear\", name = \"wear-input\", version.ref = \"wearInput\" } under [libraries]",
-        "gradle/libs.versions.toml defines wearRemoteInteractions = \"1.1.0\" under [versions] and androidx-wear-remote-interactions = { group = \"androidx.wear\", name = \"wear-remote-interactions\", version.ref = \"wearRemoteInteractions\" } under [libraries]",
-        "wear/build.gradle.kts implementation dependencies include libs.androidx.wear.input and libs.androidx.wear.remote.interactions",
-        "./gradlew :wear:assembleDebug completes without error",
+        "gradle/libs.versions.toml already has playServicesWearable = \"18.0.0\" under [versions] and play-services-wearable under [libraries] — verify it is present, add if missing",
+        "app/build.gradle.kts implementation dependencies include libs.play.services.wearable",
+        "wear/build.gradle.kts implementation dependencies also include libs.play.services.wearable (verify, add if missing)",
+        "./gradlew :app:assembleDebug completes without error",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Check https://maven.google.com for the latest stable versions of wear-input and wear-remote-interactions before hardcoding versions. Both are Wear OS specific — add only to the :wear module."
+      "notes": "play-services-wearable is already declared in libs.versions.toml at version 18.0.0. Only the :app build.gradle.kts dependency line is likely missing. Verify :wear has it too."
     },
     {
       "id": "US-002",
-      "title": "Replace BasicTextField inputs with RemoteInput chips",
-      "description": "As a user, I want to tap a visible chip to enter my email and password so that the system keyboard dialog opens and I can actually type on my watch.",
+      "title": "Add Retrofit and Gson to phone module",
+      "description": "As a developer, I need Retrofit and converter-gson in the :app module so the phone can POST sensor readings to the Node+Postgres backend.",
       "acceptanceCriteria": [
-        "All BasicTextField usages are removed from SignInScreen.kt",
-        "Email and password are each represented by an OutlinedButton (full width) showing placeholder text when empty or the entered value when filled; the password chip shows bullet characters (•••) instead of the raw value",
-        "Tapping the email chip builds a RemoteInput with key 'email_input' and label 'Enter email', constructs an intent via RemoteInputIntentHelper.createActionRemoteInputIntent() with that RemoteInput, and launches it via rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult())",
-        "Tapping the password chip builds a RemoteInput with key 'password_input' and label 'Enter password', and launches it the same way; the password chip never pre-populates with a previous value",
-        "The activity result callback extracts the string via RemoteInput.getResultsFromIntent(result.data)?.getString(key) and stores it in the ViewModel via onEmailChange / onPasswordChange callbacks",
-        "SignInViewModel stores email and password as MutableStateFlow<String> fields (initialized to \"\") and exposes them as StateFlow; SignInScreen.kt observes them to display current chip values",
-        "SignInScreenContent parameter list is updated to accept emailValue: String and passwordValue: String",
-        "./gradlew :wear:assembleDebug completes without error",
+        "app/build.gradle.kts implementation dependencies include libs.retrofit2 and libs.retrofit2.converter.gson",
+        "libs.retrofit2 and libs.retrofit2.converter.gson are already in libs.versions.toml — verify, add if missing",
+        "./gradlew :app:assembleDebug completes without error",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Depends on US-001. androidx.core.app.RemoteInput is in core-ktx; for Wear OS intent wiring use androidx.wear.input.RemoteInputIntentHelper. The launcher must be created with rememberLauncherForActivityResult at the composable call site, not inside a click handler."
+      "passes": false,
+      "notes": "retrofit2 and retrofit2-converter-gson are already declared in libs.versions.toml. Only the :app build.gradle.kts dependency lines are missing. Mirror the pattern from wear/build.gradle.kts."
     },
     {
       "id": "US-003",
-      "title": "Add client-side validation before sign-in",
-      "description": "As a user, I want to see an immediate inline error if I tap Sign In with blank or malformed fields so that I am not waiting on a network round-trip for an avoidable error.",
+      "title": "Define SensorBundle data model and MessagePaths in both modules",
+      "description": "As a developer, I need a consistent data structure and message path constants in both modules so the watch sender and phone receiver speak the same JSON protocol.",
       "acceptanceCriteria": [
-        "If email is blank when Sign In is tapped, a Text 'Email is required' appears below the email chip in MaterialTheme.colorScheme.error color; viewModel.signIn() is NOT called",
-        "If password is blank when Sign In is tapped, a Text 'Password is required' appears below the password chip in MaterialTheme.colorScheme.error color; viewModel.signIn() is NOT called",
-        "If email does not contain '@', a Text 'Enter a valid email address' appears below the email chip in error color; viewModel.signIn() is NOT called",
-        "Validation errors are stored as emailError: String? and passwordError: String? in SignInViewModel and exposed as StateFlow",
-        "Tapping the email chip clears emailError; tapping the password chip clears passwordError",
-        "When all fields are valid, viewModel.signIn() is called normally and no validation error Text items are visible",
-        "Typecheck passes"
-      ],
-      "priority": 3,
-      "passes": true,
-      "notes": "Depends on US-002. Validation runs inside the onSignIn lambda in SignInScreen before delegating to the ViewModel. Keep validation logic in the ViewModel (validate() method) so it is testable. Email regex: just check contains('@') — full RFC validation is overkill here."
-    },
-    {
-      "id": "US-004",
-      "title": "Post-failure UX: clear password and highlight error chip",
-      "description": "As a user, I want the password chip to clear and turn red after a failed sign-in so that I know exactly which field to correct without reading a wall of text.",
-      "acceptanceCriteria": [
-        "In SignInViewModel, when ClerkResult.Failure is received in signIn(), the password StateFlow is reset to \"\"",
-        "When SignInUiState is Error, the password chip's container color is set to MaterialTheme.colorScheme.errorContainer and its content color to MaterialTheme.colorScheme.onErrorContainer",
-        "When SignInUiState is Error, the existing error Text from the Clerk failure message remains visible below the password chip",
-        "Tapping the password chip to re-enter (i.e. when a new password_input result arrives) transitions UiState back to Idle, clears the error message, and resets the chip color to its default",
-        "The email chip is NOT highlighted or cleared on sign-in failure",
-        "Typecheck passes"
-      ],
-      "priority": 4,
-      "passes": true,
-      "notes": "Depends on US-002 and US-003. The chip color logic lives in SignInScreenContent: derive chip colors from a when(uiState) expression — use ButtonDefaults.outlinedButtonColors() for Idle/Loading, and a copy with errorContainer for Error state."
-    },
-    {
-      "id": "US-005",
-      "title": "Add 'Use phone' fallback button",
-      "description": "As a user whose watch keyboard is unavailable, I want a secondary button that opens sign-in on my paired phone so that I am not blocked.",
-      "acceptanceCriteria": [
-        "A CompactButton labelled 'Use phone' is rendered below the Sign In button in SignInScreenContent, styled as a secondary/outlined action",
-        "Tapping 'Use phone' calls RemoteActivityHelper(context).startRemoteActivity(Intent('com.pl.pulselab.SIGN_IN'), null) wrapped in a try/catch",
-        "If RemoteActivityHelper throws (no paired phone or phone app not installed), a Text 'Phone not available' is shown below the button in MaterialTheme.colorScheme.error color for 3 seconds then hidden (use a LaunchedEffect with delay(3000) to reset state)",
-        "app/src/main/AndroidManifest.xml registers an <intent-filter> for action 'com.pl.pulselab.SIGN_IN' on MainActivity (stub — no actual phone sign-in UI needed yet)",
-        "The 'Use phone' button is disabled (enabled = false) while SignInUiState is Loading",
+        "wear/src/main/java/com/pl/pulselab/model/SensorBundle.kt created with data class SensorBundle(val bpm: Int, val hrv: Int, val spo2: Int, val stressIndex: Int, val timestamp: Long)",
+        "wear/src/main/java/com/pl/pulselab/model/MessagePaths.kt created with object MessagePaths { const val SENSOR_DATA = \"/sensor/data\" }",
+        "app/src/main/java/com/pl/pulselab/model/SensorBundle.kt created with identical fields",
+        "app/src/main/java/com/pl/pulselab/model/MessagePaths.kt created with identical constant",
         "./gradlew :wear:assembleDebug and ./gradlew :app:assembleDebug both complete without error",
         "Typecheck passes"
       ],
+      "priority": 3,
+      "passes": false,
+      "notes": "No shared Gradle module — each module owns its own copy. JSON is the contract. Gson is available transitively via converter-gson in both modules once US-002 is done."
+    },
+    {
+      "id": "US-004",
+      "title": "Extend wear data model and simulation to all 4 metrics",
+      "description": "As a developer, I need HeartRateRepository to produce HRV, SpO2 and stress index alongside BPM so a complete SensorBundle can be assembled on every tick.",
+      "acceptanceCriteria": [
+        "wear/src/main/java/com/pl/pulselab/model/HeartRateReading.kt updated to include hrv: Int, spo2: Int, stressIndex: Int fields alongside existing bpm",
+        "Simulation mode in HeartRateRepository generates plausible values: HRV 30–80 ms, SpO2 95–100, stress 0–100 (use Random.nextInt with appropriate ranges)",
+        "HomeViewModel state carries all 4 values (update HomeUiState.Monitoring or equivalent sealed class variant)",
+        "HomeScreen.kt compiles and does not crash after the model extension (update any when-exhaustive branches)",
+        "./gradlew :wear:assembleDebug completes without error",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Depends on US-003. Only touches the :wear module. Keep the SIMULATE constant pattern in HeartRateRepository — just extend the emitted values. The HomeScreen UI does not need to display the new fields yet, just must not crash."
+    },
+    {
+      "id": "US-005",
+      "title": "Send SensorBundle from watch to phone via MessageClient",
+      "description": "As a developer, I need the watch to transmit each sensor reading to the phone in real time so the phone can display and relay it.",
+      "acceptanceCriteria": [
+        "wear/src/main/java/com/pl/pulselab/data/wearable/WearDataSender.kt created as a plain class with a suspend fun send(context: Context, bundle: SensorBundle) method",
+        "send() discovers connected nodes via Wearable.getNodeClient(context).connectedNodes.await() and sends to each node via Wearable.getMessageClient(context).sendMessage(nodeId, MessagePaths.SENSOR_DATA, gson.toJson(bundle).toByteArray()).await()",
+        "send() is wrapped in try/catch — any exception is caught and logged with Log.e(); no exception propagates to the caller",
+        "HomeViewModel calls WearDataSender.send() on each new reading inside the existing collection coroutine",
+        "Any existing direct ApiRepository calls for posting to the backend in HomeViewModel are removed or commented out with a // migrated to phone relay note",
+        "./gradlew :wear:assembleDebug completes without error",
+        "Typecheck passes"
+      ],
       "priority": 5,
-      "passes": true,
-      "notes": "Depends on US-001 (wear-remote-interactions). RemoteActivityHelper requires a Context — obtain via LocalContext.current inside SignInScreenContent. The intent action string 'com.pl.pulselab.SIGN_IN' must match exactly between the wear launcher and the phone manifest filter."
+      "passes": false,
+      "notes": "Depends on US-003 and US-004. Use kotlinx-coroutines-play-services Task.await() extension — add to wear/build.gradle.kts if not already present (artifact: org.jetbrains.kotlinx:kotlinx-coroutines-play-services, same version as kotlinxCoroutines in libs.versions.toml). Context is passed in from the ViewModel via the Application context."
+    },
+    {
+      "id": "US-006",
+      "title": "Create WearableListenerService on phone",
+      "description": "As a developer, I need a background service on the phone that receives MessageClient messages from the watch and makes them available to the UI layer via a singleton state holder.",
+      "acceptanceCriteria": [
+        "app/src/main/java/com/pl/pulselab/data/wearable/SensorDataStore.kt created as a Kotlin object with val sensorFlow: MutableStateFlow<SensorBundle?> = MutableStateFlow(null)",
+        "app/src/main/java/com/pl/pulselab/data/wearable/WearListenerService.kt created extending WearableListenerService",
+        "onMessageReceived() checks that event.path == MessagePaths.SENSOR_DATA, decodes event.data via Gson into SensorBundle, then emits to SensorDataStore.sensorFlow",
+        "WearListenerService uses a CoroutineScope(SupervisorJob() + Dispatchers.IO); scope is cancelled in onDestroy()",
+        "app/AndroidManifest.xml declares the service with android:exported=\"false\" and an intent-filter with action com.google.android.gms.wearable.MESSAGE_RECEIVED",
+        "./gradlew :app:assembleDebug completes without error",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Depends on US-003. SensorDataStore as a Kotlin object is the standard bridge between Service lifecycle and ViewModel lifecycle. The Wearable runtime starts WearListenerService automatically — do not start it manually or in Application.onCreate()."
+    },
+    {
+      "id": "US-007",
+      "title": "Create phone-side ApiService and ApiRepository for backend relay",
+      "description": "As a developer, I need a network layer in the :app module so the phone can POST each received SensorBundle to the Node+Postgres backend.",
+      "acceptanceCriteria": [
+        "app/src/main/java/com/pl/pulselab/data/network/ApiService.kt created with a Retrofit interface defining @POST(\"readings\") suspend fun postReading(@Body bundle: SensorBundle): Response<Unit>",
+        "app/src/main/java/com/pl/pulselab/data/network/ApiRepository.kt created with const val BASE_URL = \"https://TODO.replace.me/\" and an OkHttpClient with an Authorization header interceptor (token as const val API_TOKEN = \"TODO\")",
+        "ApiRepository exposes suspend fun postReading(bundle: SensorBundle): Result<Unit> that wraps the Retrofit call in runCatching",
+        "./gradlew :app:assembleDebug completes without error",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Depends on US-002 and US-003. Mirror the pattern from wear/src/main/java/com/pl/pulselab/data/network/. BASE_URL and API_TOKEN are intentional TODOs — do not invent values. Use Response<Unit> (not Call<Unit>) since this is a suspend function."
+    },
+    {
+      "id": "US-008",
+      "title": "Create StatusViewModel connected to live sensor data and backend relay",
+      "description": "As a developer, I need a ViewModel that collects from SensorDataStore, posts each reading to the backend, and exposes a state object for StatusScreen to render.",
+      "acceptanceCriteria": [
+        "app/src/main/java/com/pl/pulselab/presentation/status/StatusViewModel.kt created extending AndroidViewModel (needs Application for context)",
+        "StatusViewModel collects SensorDataStore.sensorFlow; on each non-null bundle it calls apiRepository.postReading(bundle) on Dispatchers.IO",
+        "StatusViewModel exposes statusUiState: StateFlow<StatusUiState> where StatusUiState is a data class with fields: bundle: SensorBundle?, isSyncing: Boolean, lastSyncTime: String?, syncError: String?",
+        "On successful POST: isSyncing = false, lastSyncTime = formatted current time (HH:mm), syncError = null",
+        "On failed POST: isSyncing = false, syncError = exception message or \"Erro de conexão\", lastSyncTime unchanged",
+        "./gradlew :app:assembleDebug completes without error",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Depends on US-006 and US-007. Use viewModelScope for coroutines. Format lastSyncTime with java.time.LocalTime.now() and DateTimeFormatter.ofPattern(\"HH:mm\") — available at minSdk 30+. StatusUiState should be a plain data class, not a sealed class."
+    },
+    {
+      "id": "US-009",
+      "title": "Refactor StatusScreen to stateless/stateful split and wire to StatusViewModel",
+      "description": "As a researcher using the phone app, I want StatusScreen to display live sensor readings and real sync status from the watch instead of hardcoded values.",
+      "acceptanceCriteria": [
+        "StatusScreen.kt refactored into: StatusScreen(viewModel: StatusViewModel) stateful wrapper that collects statusUiState and calls StatusScreenContent; and StatusScreenContent(uiState: StatusUiState) stateless composable — following the same pattern as HomeScreen.kt in the wear module",
+        "All 4 metric cards (HR, HRV, SpO2, stress) show values from uiState.bundle; when bundle is null each value displays \"--\"",
+        "\"Estado do Servidor\" row shows \"Online\" in green on last successful POST, \"Erro\" in red when syncError is non-null",
+        "\"Sincronização\" row shows spinning Sync icon while isSyncing = true; shows \"Concluído\" when lastSyncTime is set; shows \"Falhou\" when syncError is non-null",
+        "\"Último Envio\" row shows lastSyncTime value (e.g. \"Hoje às 14:32\") or \"--\" when null",
+        "MainActivity.kt updated to instantiate StatusViewModel via viewModel() and pass it to StatusScreen(viewModel)",
+        "./gradlew :app:assembleDebug completes without error",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Depends on US-008. Import androidx.lifecycle.viewmodel.compose:lifecycle-viewmodel-compose for the viewModel() composable — already in libs.versions.toml as lifecycleViewmodelCompose. StatusScreenContent keeps the existing hardcoded color palette (Navy, Teal, etc.) — only the data values change."
     }
   ]
 }
