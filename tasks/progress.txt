@@ -84,3 +84,16 @@
   - runCatching wraps the call; error() throws if HTTP code is not successful
   - BASE_URL and API_TOKEN are intentional TODOs — do not replace with real values
 ---
+
+## 2026-05-20 - US-008
+- Created app/src/main/java/com/pl/pulselab/presentation/status/StatusViewModel.kt
+- StatusViewModel extends AndroidViewModel; collects SensorDataStore.sensorFlow in init block
+- On each bundle: sets isSyncing=true, calls apiRepository.postReading(), updates state on success/failure
+- StatusUiState is a plain data class (not sealed) with bundle, isSyncing, lastSyncTime, syncError
+- lastSyncTime formatted with java.time.LocalTime + DateTimeFormatter.ofPattern("HH:mm")
+- Files changed: StatusViewModel.kt
+- **Learnings for future iterations:**
+  - withContext(Dispatchers.IO) wraps the Retrofit call inside the viewModelScope.launch
+  - fold(onSuccess, onFailure) used on Result<Unit> to update state after POST
+  - java.time.LocalTime.now() is available at minSdk 30+ — no need for Calendar or Date
+---

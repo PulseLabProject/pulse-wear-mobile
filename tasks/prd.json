@@ -127,7 +127,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-006 and US-007. Use viewModelScope for coroutines. Format lastSyncTime with java.time.LocalTime.now() and DateTimeFormatter.ofPattern(\"HH:mm\") — available at minSdk 30+. StatusUiState should be a plain data class, not a sealed class."
     },
     {
