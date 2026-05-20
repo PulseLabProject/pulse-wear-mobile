@@ -24,3 +24,14 @@
   - Both retrofit entries in libs.versions.toml use version.ref = "retrofit" (same version ref for main lib and converter)
   - Pattern mirrors wear/build.gradle.kts exactly
 ---
+
+## 2026-05-20 - US-003
+- Created wear/src/main/java/com/pl/pulselab/model/SensorBundle.kt with data class (bpm, hrv, spo2, stressIndex, timestamp)
+- Created wear/src/main/java/com/pl/pulselab/model/MessagePaths.kt with SENSOR_DATA = "/sensor/data"
+- Created identical copies in app/src/main/java/com/pl/pulselab/model/
+- Files changed: 4 new files across both modules
+- **Learnings for future iterations:**
+  - No shared module exists; each module owns its copy — JSON is the protocol contract
+  - Created app/src/main/java/com/pl/pulselab/model/ directory (did not exist before)
+  - Gson (converter-gson transitive dep) provides serialization for SensorBundle
+---

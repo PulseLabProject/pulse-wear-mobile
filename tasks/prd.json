@@ -45,7 +45,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "No shared Gradle module — each module owns its own copy. JSON is the contract. Gson is available transitively via converter-gson in both modules once US-002 is done."
     },
     {
