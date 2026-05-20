@@ -29,7 +29,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "retrofit2 and retrofit2-converter-gson are already declared in libs.versions.toml. Only the :app build.gradle.kts dependency lines are missing. Mirror the pattern from wear/build.gradle.kts."
     },
     {

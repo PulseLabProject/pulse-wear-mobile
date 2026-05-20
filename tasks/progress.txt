@@ -15,3 +15,12 @@
   - libs.versions.toml and wear/build.gradle.kts were already properly set up; only app/build.gradle.kts was missing the dependency
   - All pre-existing staged changes from prior login-screen work were committed on this branch as part of the first commit
 ---
+
+## 2026-05-20 - US-002
+- Added `implementation(libs.retrofit2)` and `implementation(libs.retrofit2.converter.gson)` to app/build.gradle.kts
+- Verified libs.versions.toml already had retrofit = "2.11.0" and both library entries
+- Files changed: app/build.gradle.kts
+- **Learnings for future iterations:**
+  - Both retrofit entries in libs.versions.toml use version.ref = "retrofit" (same version ref for main lib and converter)
+  - Pattern mirrors wear/build.gradle.kts exactly
+---
