@@ -145,7 +145,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-008. Import androidx.lifecycle.viewmodel.compose:lifecycle-viewmodel-compose for the viewModel() composable — already in libs.versions.toml as lifecycleViewmodelCompose. StatusScreenContent keeps the existing hardcoded color palette (Navy, Teal, etc.) — only the data values change."
     }
   ]

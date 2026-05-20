@@ -97,3 +97,17 @@
   - fold(onSuccess, onFailure) used on Result<Unit> to update state after POST
   - java.time.LocalTime.now() is available at minSdk 30+ — no need for Calendar or Date
 ---
+
+## 2026-05-20 - US-009
+- Refactored StatusScreen.kt into StatusScreen(viewModel: StatusViewModel) stateful wrapper and StatusScreenContent(uiState: StatusUiState) stateless composable
+- All 4 metric cards (HR, HRV, SpO2, stress) now show values from uiState.bundle; display "--" when bundle is null
+- "Estado do Servidor" shows "Online" (green) or "Erro" (red) based on syncError
+- "Sincronização" shows spinning Sync icon while isSyncing; "Concluído" when lastSyncTime is set; "Falhou" when syncError non-null
+- "Último Envio" shows "Hoje às HH:mm" from lastSyncTime or "--" when null
+- Updated MainActivity.kt to instantiate StatusViewModel via viewModel() and pass to StatusScreen
+- Files changed: StatusScreen.kt, MainActivity.kt
+- **Learnings for future iterations:**
+  - Use collectAsState() (not collectAsStateWithLifecycle) — lifecycle-runtime-compose is not in the version catalog
+  - rememberInfiniteTransition must not be called conditionally; apply rotation conditionally: .rotate(if (uiState.isSyncing) syncRotation else 0f)
+  - StatusUiState default state (no bundle, no syncError) shows "Online" + "Aguardando" — deliberate idle state before first reading arrives
+---
