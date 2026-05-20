@@ -78,7 +78,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-003 and US-004. Use kotlinx-coroutines-play-services Task.await() extension — add to wear/build.gradle.kts if not already present (artifact: org.jetbrains.kotlinx:kotlinx-coroutines-play-services, same version as kotlinxCoroutines in libs.versions.toml). Context is passed in from the ViewModel via the Application context."
     },
     {

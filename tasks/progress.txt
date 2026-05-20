@@ -48,3 +48,15 @@
   - when-exhaustive branches in HomeScreen did not need changes — only the data class fields changed
   - IntRange.random() used instead of Random.nextInt() for cleaner syntax at Kotlin 2.x
 ---
+
+## 2026-05-20 - US-005
+- Added kotlinx-coroutines-play-services to libs.versions.toml and wear/build.gradle.kts
+- Created wear/src/main/java/com/pl/pulselab/data/wearable/WearDataSender.kt
+- WearDataSender.send() uses Wearable.getNodeClient/getMessageClient with Task.await() extension
+- Updated HomeViewModel to call WearDataSender.send() and removed direct ApiRepository calls (migrated to phone relay)
+- Files changed: libs.versions.toml, wear/build.gradle.kts, WearDataSender.kt, HomeViewModel.kt
+- **Learnings for future iterations:**
+  - kotlinx-coroutines-play-services provides the .await() extension for GMS Tasks — needed for Wearable API
+  - WearDataSender uses the same version ref as kotlinxCoroutines in libs.versions.toml
+  - getApplication() used in AndroidViewModel to get Application context for WearDataSender
+---

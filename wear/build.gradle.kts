@@ -75,6 +75,7 @@ dependencies {
 
     // Coroutines — needed for suspend functions and Flow
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     // Clerk — authentication SDK
     implementation(libs.clerk.android.api)
