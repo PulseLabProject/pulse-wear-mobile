@@ -3,6 +3,8 @@ package com.pl.pulselab
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pl.pulselab.presentation.status.StatusViewModel
 import com.pl.pulselab.ui.theme.PulseLabTheme
 
 class MainActivity : ComponentActivity() {
@@ -10,7 +12,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             PulseLabTheme {
-                StatusScreen()
+                val viewModel: StatusViewModel = viewModel()
+                StatusScreen(viewModel = viewModel)
             }
         }
     }
