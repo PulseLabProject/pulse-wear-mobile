@@ -43,6 +43,7 @@ dependencies {
     implementation(libs.play.services.wearable)
     implementation(libs.retrofit2)
     implementation(libs.retrofit2.converter.gson)
+    implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

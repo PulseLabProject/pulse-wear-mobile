@@ -60,3 +60,16 @@
   - WearDataSender uses the same version ref as kotlinxCoroutines in libs.versions.toml
   - getApplication() used in AndroidViewModel to get Application context for WearDataSender
 ---
+
+## 2026-05-20 - US-006
+- Created app/src/main/java/com/pl/pulselab/data/wearable/SensorDataStore.kt (Kotlin object with MutableStateFlow)
+- Created app/src/main/java/com/pl/pulselab/data/wearable/WearListenerService.kt extending WearableListenerService
+- Registered WearListenerService in app/AndroidManifest.xml with MESSAGE_RECEIVED intent-filter
+- Added kotlinx-coroutines-android to app/build.gradle.kts (needed by WearListenerService coroutine scope)
+- Files changed: SensorDataStore.kt, WearListenerService.kt, AndroidManifest.xml, app/build.gradle.kts
+- **Learnings for future iterations:**
+  - WearableListenerService is started automatically by the Wearable runtime — do NOT start it manually
+  - SensorDataStore as a Kotlin object bridges Service lifecycle to ViewModel lifecycle
+  - Service uses CoroutineScope(SupervisorJob() + Dispatchers.IO), cancelled in onDestroy()
+  - android:exported="false" on the service per PRD requirement
+---
