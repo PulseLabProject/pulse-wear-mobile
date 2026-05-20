@@ -1,6 +1,10 @@
 package com.pl.pulselab.data.network
 
+import android.util.Log
+import com.clerk.api.Clerk
+import com.clerk.api.network.serialization.ClerkResult
 import com.pl.pulselab.model.SensorBundle
+import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -9,15 +13,24 @@ class ApiRepository {
 
     companion object {
         const val BASE_URL = "https://TODO.replace.me/"
-        const val API_TOKEN = "TODO"
     }
 
     private val httpClient = OkHttpClient.Builder()
         .addInterceptor { chain ->
-            val request = chain.request().newBuilder()
-                .addHeader("Authorization", "Bearer $API_TOKEN")
-                .build()
-            chain.proceed(request)
+            val tokenResult = runBlocking { Clerk.auth.getToken() }
+            val requestBuilder = chain.request().newBuilder()
+            when (tokenResult) {
+                is ClerkResult.Success -> {
+                    val jwt = tokenResult.value
+                    if (!jwt.isNullOrEmpty()) {
+                        requestBuilder.addHeader("Authorization", "Bearer $jwt")
+                    }
+                }
+                is ClerkResult.Failure -> {
+                    Log.w("ApiRepository", "Clerk getToken failed: ${tokenResult.throwable?.message}")
+                }
+            }
+            chain.proceed(requestBuilder.build())
         }
         .build()
 
