@@ -23,9 +23,12 @@ sealed class HomeUiState {
 
     // Actively collecting and sending heart rate data
     data class Monitoring(
-        val bpm: Double?,          // null = sensor connected, waiting for first reading
-        val sessionId: String,     // unique ID grouping all readings in this session
-        val readingsSent: Int      // counter shown in the UI so you can verify backend is receiving
+        val bpm: Double?,
+        val hrv: Int?,
+        val spo2: Int?,
+        val stressIndex: Int?,
+        val sessionId: String,
+        val readingsSent: Int
     ) : HomeUiState()
 
     // Something went wrong (network error, sensor error, etc.)
@@ -54,6 +57,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val sessionId = UUID.randomUUID().toString()
         _uiState.value = HomeUiState.Monitoring(
             bpm = null,
+            hrv = null,
+            spo2 = null,
+            stressIndex = null,
             sessionId = sessionId,
             readingsSent = 0
         )
@@ -64,8 +70,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             .onEach { reading ->
                 val current = _uiState.value as? HomeUiState.Monitoring ?: return@onEach
 
-                // 1. Update the displayed BPM immediately (user sees it right away)
-                _uiState.value = current.copy(bpm = reading.bpm)
+                // 1. Update displayed metrics immediately
+                _uiState.value = current.copy(
+                    bpm = reading.bpm,
+                    hrv = reading.hrv,
+                    spo2 = reading.spo2,
+                    stressIndex = reading.stressIndex
+                )
 
                 // 2. Send the reading to the backend concurrently (doesn't block the sensor flow)
                 viewModelScope.launch {

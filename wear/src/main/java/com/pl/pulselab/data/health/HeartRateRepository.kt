@@ -29,10 +29,16 @@ class HeartRateRepository(private val context: Context) {
     private fun simulatedHeartRateFlow(): Flow<HeartRateReading> = flow {
         var bpm = 72.0
         while (true) {
-            // Drift the BPM slightly each second to mimic a real signal
             bpm = (bpm + (Math.random() - 0.5) * 5).coerceIn(50.0, 130.0)
-            emit(HeartRateReading(bpm = bpm))
-            delay(1000L) // one reading per second
+            emit(
+                HeartRateReading(
+                    bpm = bpm,
+                    hrv = (30..80).random(),
+                    spo2 = (95..100).random(),
+                    stressIndex = (0..100).random()
+                )
+            )
+            delay(1000L)
         }
     }
 

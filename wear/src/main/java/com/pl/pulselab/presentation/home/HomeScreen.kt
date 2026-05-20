@@ -140,7 +140,10 @@ fun PreviewIdle() {
 @Composable
 fun PreviewMonitoring() {
     HomeScreenContent(
-        uiState = HomeUiState.Monitoring(bpm = 78.0, sessionId = "preview", readingsSent = 12),
+        uiState = HomeUiState.Monitoring(
+            bpm = 78.0, hrv = 55, spo2 = 98, stressIndex = 30,
+            sessionId = "preview", readingsSent = 12
+        ),
         onStart = {},
         onStop = {}
     )

@@ -35,3 +35,16 @@
   - Created app/src/main/java/com/pl/pulselab/model/ directory (did not exist before)
   - Gson (converter-gson transitive dep) provides serialization for SensorBundle
 ---
+
+## 2026-05-20 - US-004
+- Extended HeartRateReading.kt to include hrv: Int, spo2: Int, stressIndex: Int
+- Updated HeartRateRepository simulation to emit HRV 30-80ms, SpO2 95-100%, stress 0-100
+- Extended HomeUiState.Monitoring with hrv, spo2, stressIndex (nullable for initial null state)
+- Updated HomeViewModel.startSession() initial state and onEach update to propagate new fields
+- Updated HomeScreen.kt PreviewMonitoring() to match new Monitoring constructor
+- Files changed: HeartRateReading.kt, HeartRateRepository.kt, HomeViewModel.kt, HomeScreen.kt
+- **Learnings for future iterations:**
+  - HomeUiState.Monitoring fields set to null initially (null = sensor warming up) then filled on first reading
+  - when-exhaustive branches in HomeScreen did not need changes — only the data class fields changed
+  - IntRange.random() used instead of Random.nextInt() for cleaner syntax at Kotlin 2.x
+---

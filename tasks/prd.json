@@ -61,7 +61,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-003. Only touches the :wear module. Keep the SIMULATE constant pattern in HeartRateRepository — just extend the emitted values. The HomeScreen UI does not need to display the new fields yet, just must not crash."
     },
     {
