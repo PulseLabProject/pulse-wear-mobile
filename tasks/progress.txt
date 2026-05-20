@@ -73,3 +73,14 @@
   - Service uses CoroutineScope(SupervisorJob() + Dispatchers.IO), cancelled in onDestroy()
   - android:exported="false" on the service per PRD requirement
 ---
+
+## 2026-05-20 - US-007
+- Created app/src/main/java/com/pl/pulselab/data/network/ApiService.kt with @POST("readings") endpoint
+- Created app/src/main/java/com/pl/pulselab/data/network/ApiRepository.kt with TODO BASE_URL and API_TOKEN
+- ApiRepository.postReading() wraps Retrofit call in runCatching and checks HTTP success code
+- Files changed: ApiService.kt, ApiRepository.kt
+- **Learnings for future iterations:**
+  - Use Response<Unit> (not Call<Unit>) for suspend functions in Retrofit
+  - runCatching wraps the call; error() throws if HTTP code is not successful
+  - BASE_URL and API_TOKEN are intentional TODOs — do not replace with real values
+---
