@@ -1,113 +1,33 @@
+## 2026-05-21 - US-002
+- Changed WearDataSender.send() return type to Boolean (true = nodes found + all sends succeed; false = empty nodes or exception)
+- Added phoneReachable: Boolean? = null to HomeUiState.Monitoring
+- HomeViewModel captures Boolean return and updates phoneReachable + readingsSent together
+- HomeScreenContent shows phone icon row (primary tint = reachable, error tint = unreachable) only when phoneReachable != null
+- Added PreviewMonitoringNoPhone() preview
+- Added androidx-compose-material-icons-extended to wear/build.gradle.kts (PRD notes were wrong that it was already there)
+- Files changed: WearDataSender.kt, HomeViewModel.kt, HomeScreen.kt, wear/build.gradle.kts
+- **Learnings for future iterations:**
+  - material-icons-extended is in libs.versions.toml but was NOT in wear's build.gradle.kts — must add explicitly
+  - Icons.Default.* requires `androidx.compose.material.icons.Icons` import from material-icons-extended
+  - TransformingLazyColumn conditional items use `if (condition) { item { ... } }` syntax (not item { if(...) })
+---
+## 2026-05-21 - US-001
+- Added HRV (ms), SpO2 (%), and Stress (0–100) metric rows to HomeScreenContent Monitoring branch
+- Each value shows "..." when null, actual value when populated
+- "Sent: X" counter preserved below the 4 metrics
+- Files changed: wear/src/main/java/com/pl/pulselab/presentation/home/HomeScreen.kt
+- **Learnings for future iterations:**
+  - The PreviewMonitoring() already had non-null values for all fields — no preview changes needed
+  - HomeUiState.Monitoring already had hrv, spo2, stressIndex fields — truly a pure UI change
+  - `state.bpm?.let { "%.0f".format(it) }` for Double formatting; `state.hrv?.toString()` for Int fields
+---
 ## Codebase Patterns
 - libs.versions.toml is the single source of truth for all dependency versions — never hardcode versions in build.gradle.kts files
-- wear/build.gradle.kts already has play-services-wearable, retrofit2, retrofit2-converter-gson, and kotlinx-coroutines-android; mirror these in app/build.gradle.kts as needed
+- wear/build.gradle.kts already has play-services-wearable, retrofit2, retrofit2-converter-gson, kotlinx-coroutines-android, and kotlinx-coroutines-play-services
 - Both modules share applicationId com.pl.pulselab and minSdk 30 — avoid any API below 30
 - Use the wear module's build.gradle.kts as the reference for what dependencies are available
+- HomeScreen follows the stateful/stateless split: HomeScreen(viewModel) wraps HomeScreenContent(uiState, onStart, onStop)
+- HomeUiState is a sealed class: Idle, Monitoring(bpm, hrv, spo2, stressIndex, sessionId, readingsSent), Error(message)
+- WearDataSender.send() currently returns Unit and catches all exceptions silently with Log.e()
+- Icons in wear module: add `implementation(libs.androidx.compose.material.icons.extended)` to wear/build.gradle.kts, then import `androidx.compose.material.icons.Icons` and `androidx.compose.material.icons.filled.*`
 
----
-
-## 2026-05-20 - US-001
-- Added `implementation(libs.play.services.wearable)` to app/build.gradle.kts dependencies block
-- Verified libs.versions.toml already had playServicesWearable = "18.0.0" and play-services-wearable library entry
-- Verified wear/build.gradle.kts already had the dependency
-- Files changed: app/build.gradle.kts
-- **Learnings for future iterations:**
-  - libs.versions.toml and wear/build.gradle.kts were already properly set up; only app/build.gradle.kts was missing the dependency
-  - All pre-existing staged changes from prior login-screen work were committed on this branch as part of the first commit
----
-
-## 2026-05-20 - US-002
-- Added `implementation(libs.retrofit2)` and `implementation(libs.retrofit2.converter.gson)` to app/build.gradle.kts
-- Verified libs.versions.toml already had retrofit = "2.11.0" and both library entries
-- Files changed: app/build.gradle.kts
-- **Learnings for future iterations:**
-  - Both retrofit entries in libs.versions.toml use version.ref = "retrofit" (same version ref for main lib and converter)
-  - Pattern mirrors wear/build.gradle.kts exactly
----
-
-## 2026-05-20 - US-003
-- Created wear/src/main/java/com/pl/pulselab/model/SensorBundle.kt with data class (bpm, hrv, spo2, stressIndex, timestamp)
-- Created wear/src/main/java/com/pl/pulselab/model/MessagePaths.kt with SENSOR_DATA = "/sensor/data"
-- Created identical copies in app/src/main/java/com/pl/pulselab/model/
-- Files changed: 4 new files across both modules
-- **Learnings for future iterations:**
-  - No shared module exists; each module owns its copy — JSON is the protocol contract
-  - Created app/src/main/java/com/pl/pulselab/model/ directory (did not exist before)
-  - Gson (converter-gson transitive dep) provides serialization for SensorBundle
----
-
-## 2026-05-20 - US-004
-- Extended HeartRateReading.kt to include hrv: Int, spo2: Int, stressIndex: Int
-- Updated HeartRateRepository simulation to emit HRV 30-80ms, SpO2 95-100%, stress 0-100
-- Extended HomeUiState.Monitoring with hrv, spo2, stressIndex (nullable for initial null state)
-- Updated HomeViewModel.startSession() initial state and onEach update to propagate new fields
-- Updated HomeScreen.kt PreviewMonitoring() to match new Monitoring constructor
-- Files changed: HeartRateReading.kt, HeartRateRepository.kt, HomeViewModel.kt, HomeScreen.kt
-- **Learnings for future iterations:**
-  - HomeUiState.Monitoring fields set to null initially (null = sensor warming up) then filled on first reading
-  - when-exhaustive branches in HomeScreen did not need changes — only the data class fields changed
-  - IntRange.random() used instead of Random.nextInt() for cleaner syntax at Kotlin 2.x
----
-
-## 2026-05-20 - US-005
-- Added kotlinx-coroutines-play-services to libs.versions.toml and wear/build.gradle.kts
-- Created wear/src/main/java/com/pl/pulselab/data/wearable/WearDataSender.kt
-- WearDataSender.send() uses Wearable.getNodeClient/getMessageClient with Task.await() extension
-- Updated HomeViewModel to call WearDataSender.send() and removed direct ApiRepository calls (migrated to phone relay)
-- Files changed: libs.versions.toml, wear/build.gradle.kts, WearDataSender.kt, HomeViewModel.kt
-- **Learnings for future iterations:**
-  - kotlinx-coroutines-play-services provides the .await() extension for GMS Tasks — needed for Wearable API
-  - WearDataSender uses the same version ref as kotlinxCoroutines in libs.versions.toml
-  - getApplication() used in AndroidViewModel to get Application context for WearDataSender
----
-
-## 2026-05-20 - US-006
-- Created app/src/main/java/com/pl/pulselab/data/wearable/SensorDataStore.kt (Kotlin object with MutableStateFlow)
-- Created app/src/main/java/com/pl/pulselab/data/wearable/WearListenerService.kt extending WearableListenerService
-- Registered WearListenerService in app/AndroidManifest.xml with MESSAGE_RECEIVED intent-filter
-- Added kotlinx-coroutines-android to app/build.gradle.kts (needed by WearListenerService coroutine scope)
-- Files changed: SensorDataStore.kt, WearListenerService.kt, AndroidManifest.xml, app/build.gradle.kts
-- **Learnings for future iterations:**
-  - WearableListenerService is started automatically by the Wearable runtime — do NOT start it manually
-  - SensorDataStore as a Kotlin object bridges Service lifecycle to ViewModel lifecycle
-  - Service uses CoroutineScope(SupervisorJob() + Dispatchers.IO), cancelled in onDestroy()
-  - android:exported="false" on the service per PRD requirement
----
-
-## 2026-05-20 - US-007
-- Created app/src/main/java/com/pl/pulselab/data/network/ApiService.kt with @POST("readings") endpoint
-- Created app/src/main/java/com/pl/pulselab/data/network/ApiRepository.kt with TODO BASE_URL and API_TOKEN
-- ApiRepository.postReading() wraps Retrofit call in runCatching and checks HTTP success code
-- Files changed: ApiService.kt, ApiRepository.kt
-- **Learnings for future iterations:**
-  - Use Response<Unit> (not Call<Unit>) for suspend functions in Retrofit
-  - runCatching wraps the call; error() throws if HTTP code is not successful
-  - BASE_URL and API_TOKEN are intentional TODOs — do not replace with real values
----
-
-## 2026-05-20 - US-008
-- Created app/src/main/java/com/pl/pulselab/presentation/status/StatusViewModel.kt
-- StatusViewModel extends AndroidViewModel; collects SensorDataStore.sensorFlow in init block
-- On each bundle: sets isSyncing=true, calls apiRepository.postReading(), updates state on success/failure
-- StatusUiState is a plain data class (not sealed) with bundle, isSyncing, lastSyncTime, syncError
-- lastSyncTime formatted with java.time.LocalTime + DateTimeFormatter.ofPattern("HH:mm")
-- Files changed: StatusViewModel.kt
-- **Learnings for future iterations:**
-  - withContext(Dispatchers.IO) wraps the Retrofit call inside the viewModelScope.launch
-  - fold(onSuccess, onFailure) used on Result<Unit> to update state after POST
-  - java.time.LocalTime.now() is available at minSdk 30+ — no need for Calendar or Date
----
-
-## 2026-05-20 - US-009
-- Refactored StatusScreen.kt into StatusScreen(viewModel: StatusViewModel) stateful wrapper and StatusScreenContent(uiState: StatusUiState) stateless composable
-- All 4 metric cards (HR, HRV, SpO2, stress) now show values from uiState.bundle; display "--" when bundle is null
-- "Estado do Servidor" shows "Online" (green) or "Erro" (red) based on syncError
-- "Sincronização" shows spinning Sync icon while isSyncing; "Concluído" when lastSyncTime is set; "Falhou" when syncError non-null
-- "Último Envio" shows "Hoje às HH:mm" from lastSyncTime or "--" when null
-- Updated MainActivity.kt to instantiate StatusViewModel via viewModel() and pass to StatusScreen
-- Files changed: StatusScreen.kt, MainActivity.kt
-- **Learnings for future iterations:**
-  - Use collectAsState() (not collectAsStateWithLifecycle) — lifecycle-runtime-compose is not in the version catalog
-  - rememberInfiniteTransition must not be called conditionally; apply rotation conditionally: .rotate(if (uiState.isSyncing) syncRotation else 0f)
-  - StatusUiState default state (no bundle, no syncError) shows "Online" + "Aguardando" — deliberate idle state before first reading arrives
----

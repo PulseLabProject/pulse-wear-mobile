@@ -1,152 +1,40 @@
 {
   "project": "PulseLab",
-  "branchName": "ralph/phone-wear-data-pipeline",
-  "description": "Real-time data pipeline from Wear OS watch to phone companion app: watch collects HR, HRV, SpO2 and stress index, transmits via MessageClient, phone displays live readings in StatusScreen and relays each reading to the Node+Postgres backend.",
+  "branchName": "ralph/wear-monitoring-ui",
+  "description": "Wear OS HomeScreen improvements: display all 4 sensor metrics (HR, HRV, SpO2, stress index) during a monitoring session and show a subtle phone-connection indicator.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add play-services-wearable to phone module",
-      "description": "As a developer, I need play-services-wearable in the :app module so the phone can participate in the Wearable Data Layer and receive messages from the watch.",
+      "title": "Display all 4 sensor metrics on the watch monitoring screen",
+      "description": "As a researcher wearing the watch, I want to see HR, HRV, SpO2, and stress index on screen during a session so I can verify the sensor is working before leaving the lab.",
       "acceptanceCriteria": [
-        "gradle/libs.versions.toml already has playServicesWearable = \"18.0.0\" under [versions] and play-services-wearable under [libraries] — verify it is present, add if missing",
-        "app/build.gradle.kts implementation dependencies include libs.play.services.wearable",
-        "wear/build.gradle.kts implementation dependencies also include libs.play.services.wearable (verify, add if missing)",
-        "./gradlew :app:assembleDebug completes without error",
+        "HomeScreenContent Monitoring branch shows 4 labelled rows: HR (BPM), HRV (ms), SpO2 (%), Stress (0–100) — each as a separate item{} in the TransformingLazyColumn",
+        "Each value displays \"...\" while its corresponding field in HomeUiState.Monitoring is null, and the actual integer/double value once populated",
+        "The existing \"Sent: X\" counter row remains visible below the metrics",
+        "PreviewMonitoring() updated to pass non-null values for hrv, spo2, and stressIndex so the preview compiles and renders all rows",
+        "./gradlew :wear:assembleDebug completes without error",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "play-services-wearable is already declared in libs.versions.toml at version 18.0.0. Only the :app build.gradle.kts dependency line is likely missing. Verify :wear has it too."
+      "notes": "Only touches wear/src/main/java/com/pl/pulselab/presentation/home/HomeScreen.kt. The data (hrv, spo2, stressIndex) already exists in HomeUiState.Monitoring — this is a pure UI display change. Do not touch HomeViewModel, WearDataSender, or any data layer file."
     },
     {
       "id": "US-002",
-      "title": "Add Retrofit and Gson to phone module",
-      "description": "As a developer, I need Retrofit and converter-gson in the :app module so the phone can POST sensor readings to the Node+Postgres backend.",
+      "title": "Show phone-connection indicator when no phone node is found",
+      "description": "As a researcher, I want to see a subtle indicator on the watch screen when the phone is not reachable so I know whether data is being relayed before a study begins.",
       "acceptanceCriteria": [
-        "app/build.gradle.kts implementation dependencies include libs.retrofit2 and libs.retrofit2.converter.gson",
-        "libs.retrofit2 and libs.retrofit2.converter.gson are already in libs.versions.toml — verify, add if missing",
-        "./gradlew :app:assembleDebug completes without error",
+        "WearDataSender.send() return type changed from Unit to Boolean — returns true if connectedNodes is non-empty and all sendMessage calls succeed; returns false if nodes list is empty or any exception is caught (existing silent catch behaviour is preserved — no exception propagates)",
+        "HomeUiState.Monitoring data class gains one new field: val phoneReachable: Boolean? = null (default null means no send has been attempted yet)",
+        "In HomeViewModel, the launch { wearDataSender.send(...) } block captures the Boolean return value and calls _uiState.value = updated.copy(phoneReachable = result, readingsSent = updated.readingsSent + 1)",
+        "HomeScreenContent Monitoring branch shows a phone icon row: use Icons.Default.PhoneAndroid with tint MaterialTheme.colorScheme.primary when phoneReachable == true; tint MaterialTheme.colorScheme.error when phoneReachable == false; the row is omitted entirely (no item added) when phoneReachable == null",
+        "A second preview function PreviewMonitoringNoPhone() added showing the Monitoring state with phoneReachable = false",
+        "./gradlew :wear:assembleDebug completes without error",
         "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "retrofit2 and retrofit2-converter-gson are already declared in libs.versions.toml. Only the :app build.gradle.kts dependency lines are missing. Mirror the pattern from wear/build.gradle.kts."
-    },
-    {
-      "id": "US-003",
-      "title": "Define SensorBundle data model and MessagePaths in both modules",
-      "description": "As a developer, I need a consistent data structure and message path constants in both modules so the watch sender and phone receiver speak the same JSON protocol.",
-      "acceptanceCriteria": [
-        "wear/src/main/java/com/pl/pulselab/model/SensorBundle.kt created with data class SensorBundle(val bpm: Int, val hrv: Int, val spo2: Int, val stressIndex: Int, val timestamp: Long)",
-        "wear/src/main/java/com/pl/pulselab/model/MessagePaths.kt created with object MessagePaths { const val SENSOR_DATA = \"/sensor/data\" }",
-        "app/src/main/java/com/pl/pulselab/model/SensorBundle.kt created with identical fields",
-        "app/src/main/java/com/pl/pulselab/model/MessagePaths.kt created with identical constant",
-        "./gradlew :wear:assembleDebug and ./gradlew :app:assembleDebug both complete without error",
-        "Typecheck passes"
-      ],
-      "priority": 3,
-      "passes": true,
-      "notes": "No shared Gradle module — each module owns its own copy. JSON is the contract. Gson is available transitively via converter-gson in both modules once US-002 is done."
-    },
-    {
-      "id": "US-004",
-      "title": "Extend wear data model and simulation to all 4 metrics",
-      "description": "As a developer, I need HeartRateRepository to produce HRV, SpO2 and stress index alongside BPM so a complete SensorBundle can be assembled on every tick.",
-      "acceptanceCriteria": [
-        "wear/src/main/java/com/pl/pulselab/model/HeartRateReading.kt updated to include hrv: Int, spo2: Int, stressIndex: Int fields alongside existing bpm",
-        "Simulation mode in HeartRateRepository generates plausible values: HRV 30–80 ms, SpO2 95–100, stress 0–100 (use Random.nextInt with appropriate ranges)",
-        "HomeViewModel state carries all 4 values (update HomeUiState.Monitoring or equivalent sealed class variant)",
-        "HomeScreen.kt compiles and does not crash after the model extension (update any when-exhaustive branches)",
-        "./gradlew :wear:assembleDebug completes without error",
-        "Typecheck passes"
-      ],
-      "priority": 4,
-      "passes": true,
-      "notes": "Depends on US-003. Only touches the :wear module. Keep the SIMULATE constant pattern in HeartRateRepository — just extend the emitted values. The HomeScreen UI does not need to display the new fields yet, just must not crash."
-    },
-    {
-      "id": "US-005",
-      "title": "Send SensorBundle from watch to phone via MessageClient",
-      "description": "As a developer, I need the watch to transmit each sensor reading to the phone in real time so the phone can display and relay it.",
-      "acceptanceCriteria": [
-        "wear/src/main/java/com/pl/pulselab/data/wearable/WearDataSender.kt created as a plain class with a suspend fun send(context: Context, bundle: SensorBundle) method",
-        "send() discovers connected nodes via Wearable.getNodeClient(context).connectedNodes.await() and sends to each node via Wearable.getMessageClient(context).sendMessage(nodeId, MessagePaths.SENSOR_DATA, gson.toJson(bundle).toByteArray()).await()",
-        "send() is wrapped in try/catch — any exception is caught and logged with Log.e(); no exception propagates to the caller",
-        "HomeViewModel calls WearDataSender.send() on each new reading inside the existing collection coroutine",
-        "Any existing direct ApiRepository calls for posting to the backend in HomeViewModel are removed or commented out with a // migrated to phone relay note",
-        "./gradlew :wear:assembleDebug completes without error",
-        "Typecheck passes"
-      ],
-      "priority": 5,
-      "passes": true,
-      "notes": "Depends on US-003 and US-004. Use kotlinx-coroutines-play-services Task.await() extension — add to wear/build.gradle.kts if not already present (artifact: org.jetbrains.kotlinx:kotlinx-coroutines-play-services, same version as kotlinxCoroutines in libs.versions.toml). Context is passed in from the ViewModel via the Application context."
-    },
-    {
-      "id": "US-006",
-      "title": "Create WearableListenerService on phone",
-      "description": "As a developer, I need a background service on the phone that receives MessageClient messages from the watch and makes them available to the UI layer via a singleton state holder.",
-      "acceptanceCriteria": [
-        "app/src/main/java/com/pl/pulselab/data/wearable/SensorDataStore.kt created as a Kotlin object with val sensorFlow: MutableStateFlow<SensorBundle?> = MutableStateFlow(null)",
-        "app/src/main/java/com/pl/pulselab/data/wearable/WearListenerService.kt created extending WearableListenerService",
-        "onMessageReceived() checks that event.path == MessagePaths.SENSOR_DATA, decodes event.data via Gson into SensorBundle, then emits to SensorDataStore.sensorFlow",
-        "WearListenerService uses a CoroutineScope(SupervisorJob() + Dispatchers.IO); scope is cancelled in onDestroy()",
-        "app/AndroidManifest.xml declares the service with android:exported=\"false\" and an intent-filter with action com.google.android.gms.wearable.MESSAGE_RECEIVED",
-        "./gradlew :app:assembleDebug completes without error",
-        "Typecheck passes"
-      ],
-      "priority": 6,
-      "passes": true,
-      "notes": "Depends on US-003. SensorDataStore as a Kotlin object is the standard bridge between Service lifecycle and ViewModel lifecycle. The Wearable runtime starts WearListenerService automatically — do not start it manually or in Application.onCreate()."
-    },
-    {
-      "id": "US-007",
-      "title": "Create phone-side ApiService and ApiRepository for backend relay",
-      "description": "As a developer, I need a network layer in the :app module so the phone can POST each received SensorBundle to the Node+Postgres backend.",
-      "acceptanceCriteria": [
-        "app/src/main/java/com/pl/pulselab/data/network/ApiService.kt created with a Retrofit interface defining @POST(\"readings\") suspend fun postReading(@Body bundle: SensorBundle): Response<Unit>",
-        "app/src/main/java/com/pl/pulselab/data/network/ApiRepository.kt created with const val BASE_URL = \"https://TODO.replace.me/\" and an OkHttpClient with an Authorization header interceptor (token as const val API_TOKEN = \"TODO\")",
-        "ApiRepository exposes suspend fun postReading(bundle: SensorBundle): Result<Unit> that wraps the Retrofit call in runCatching",
-        "./gradlew :app:assembleDebug completes without error",
-        "Typecheck passes"
-      ],
-      "priority": 7,
-      "passes": true,
-      "notes": "Depends on US-002 and US-003. Mirror the pattern from wear/src/main/java/com/pl/pulselab/data/network/. BASE_URL and API_TOKEN are intentional TODOs — do not invent values. Use Response<Unit> (not Call<Unit>) since this is a suspend function."
-    },
-    {
-      "id": "US-008",
-      "title": "Create StatusViewModel connected to live sensor data and backend relay",
-      "description": "As a developer, I need a ViewModel that collects from SensorDataStore, posts each reading to the backend, and exposes a state object for StatusScreen to render.",
-      "acceptanceCriteria": [
-        "app/src/main/java/com/pl/pulselab/presentation/status/StatusViewModel.kt created extending AndroidViewModel (needs Application for context)",
-        "StatusViewModel collects SensorDataStore.sensorFlow; on each non-null bundle it calls apiRepository.postReading(bundle) on Dispatchers.IO",
-        "StatusViewModel exposes statusUiState: StateFlow<StatusUiState> where StatusUiState is a data class with fields: bundle: SensorBundle?, isSyncing: Boolean, lastSyncTime: String?, syncError: String?",
-        "On successful POST: isSyncing = false, lastSyncTime = formatted current time (HH:mm), syncError = null",
-        "On failed POST: isSyncing = false, syncError = exception message or \"Erro de conexão\", lastSyncTime unchanged",
-        "./gradlew :app:assembleDebug completes without error",
-        "Typecheck passes"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Depends on US-006 and US-007. Use viewModelScope for coroutines. Format lastSyncTime with java.time.LocalTime.now() and DateTimeFormatter.ofPattern(\"HH:mm\") — available at minSdk 30+. StatusUiState should be a plain data class, not a sealed class."
-    },
-    {
-      "id": "US-009",
-      "title": "Refactor StatusScreen to stateless/stateful split and wire to StatusViewModel",
-      "description": "As a researcher using the phone app, I want StatusScreen to display live sensor readings and real sync status from the watch instead of hardcoded values.",
-      "acceptanceCriteria": [
-        "StatusScreen.kt refactored into: StatusScreen(viewModel: StatusViewModel) stateful wrapper that collects statusUiState and calls StatusScreenContent; and StatusScreenContent(uiState: StatusUiState) stateless composable — following the same pattern as HomeScreen.kt in the wear module",
-        "All 4 metric cards (HR, HRV, SpO2, stress) show values from uiState.bundle; when bundle is null each value displays \"--\"",
-        "\"Estado do Servidor\" row shows \"Online\" in green on last successful POST, \"Erro\" in red when syncError is non-null",
-        "\"Sincronização\" row shows spinning Sync icon while isSyncing = true; shows \"Concluído\" when lastSyncTime is set; shows \"Falhou\" when syncError is non-null",
-        "\"Último Envio\" row shows lastSyncTime value (e.g. \"Hoje às 14:32\") or \"--\" when null",
-        "MainActivity.kt updated to instantiate StatusViewModel via viewModel() and pass it to StatusScreen(viewModel)",
-        "./gradlew :app:assembleDebug completes without error",
-        "Typecheck passes"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": "Depends on US-008. Import androidx.lifecycle.viewmodel.compose:lifecycle-viewmodel-compose for the viewModel() composable — already in libs.versions.toml as lifecycleViewmodelCompose. StatusScreenContent keeps the existing hardcoded color palette (Navy, Teal, etc.) — only the data values change."
+      "notes": "Touches three files: WearDataSender.kt (return type + Boolean logic), HomeViewModel.kt (capture return value, update state), HomeScreen.kt (render phone icon). HomeUiState.Monitoring already has a readingsSent field — add phoneReachable alongside it. Icons.Default.PhoneAndroid is available from the material-icons-core artifact already in the wear module."
     }
   ]
 }
