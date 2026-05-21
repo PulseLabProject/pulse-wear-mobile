@@ -1,9 +1,11 @@
 package com.pl.pulselab.presentation.auth
 
+import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.clerk.api.Clerk
 import com.clerk.api.network.serialization.ClerkResult
+import com.clerk.api.sso.OAuthProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -67,6 +69,24 @@ class SignInViewModel : ViewModel() {
             _passwordError.value = null
         }
         return valid
+    }
+
+    fun signInWithGoogle(@Suppress("UNUSED_PARAMETER") activity: Activity) {
+        _uiState.value = SignInUiState.Loading
+        viewModelScope.launch {
+            val result = Clerk.auth.signInWithOAuth(OAuthProvider.GOOGLE)
+            when (result) {
+                is ClerkResult.Success -> {
+                    _uiState.value = SignInUiState.Idle
+                }
+                is ClerkResult.Failure -> {
+                    val msg = result.error?.errors?.firstOrNull()?.message
+                        ?: result.throwable?.message
+                        ?: "Google sign in failed"
+                    _uiState.value = SignInUiState.Error(msg)
+                }
+            }
+        }
     }
 
     fun signInWithPassword() {
