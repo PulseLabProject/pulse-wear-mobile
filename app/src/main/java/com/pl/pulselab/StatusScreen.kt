@@ -103,8 +103,16 @@ fun StatusScreenContent(
         label = "rotate"
     )
 
-    val serverStatusText = if (uiState.syncError != null) "Erro" else "Online"
-    val serverStatusColor = if (uiState.syncError != null) Red else Green
+    val serverStatusText = when (uiState.serverOnline) {
+        true  -> "Online"
+        false -> "Erro"
+        null  -> "Verificando..."
+    }
+    val serverStatusColor = when (uiState.serverOnline) {
+        true  -> Green
+        false -> Red
+        null  -> TextSecondary
+    }
 
     val syncStatusText = when {
         uiState.isSyncing -> "Em andamento..."

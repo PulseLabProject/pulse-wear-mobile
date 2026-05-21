@@ -12,7 +12,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 class ApiRepository {
 
     companion object {
-        const val BASE_URL = "https://TODO.replace.me/"
+        const val BASE_URL = "http://192.168.0.103:3333"
     }
 
     private val httpClient = OkHttpClient.Builder()
@@ -46,5 +46,11 @@ class ApiRepository {
         if (!response.isSuccessful) {
             error("HTTP ${response.code()}")
         }
+    }
+
+    suspend fun ping(): Boolean = try {
+        api.ping().isSuccessful
+    } catch (e: Exception) {
+        false
     }
 }
