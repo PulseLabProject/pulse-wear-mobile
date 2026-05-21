@@ -1,40 +1,116 @@
 {
   "project": "PulseLab",
-  "branchName": "ralph/wear-monitoring-ui",
-  "description": "Wear OS HomeScreen improvements: display all 4 sensor metrics (HR, HRV, SpO2, stress index) during a monitoring session and show a subtle phone-connection indicator.",
+  "branchName": "ralph/phone-auth",
+  "description": "Wire Clerk authentication into the phone app: gate StatusScreen behind sign-in, support email+password and Google OAuth, add sign-out from StatusScreen.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Display all 4 sensor metrics on the watch monitoring screen",
-      "description": "As a researcher wearing the watch, I want to see HR, HRV, SpO2, and stress index on screen during a session so I can verify the sensor is working before leaving the lab.",
+      "title": "Create AuthViewModel for the phone app",
+      "description": "As a developer, I need a ViewModel that observes the Clerk session state so MainActivity can react to sign-in and sign-out without polling.",
       "acceptanceCriteria": [
-        "HomeScreenContent Monitoring branch shows 4 labelled rows: HR (BPM), HRV (ms), SpO2 (%), Stress (0–100) — each as a separate item{} in the TransformingLazyColumn",
-        "Each value displays \"...\" while its corresponding field in HomeUiState.Monitoring is null, and the actual integer/double value once populated",
-        "The existing \"Sent: X\" counter row remains visible below the metrics",
-        "PreviewMonitoring() updated to pass non-null values for hrv, spo2, and stressIndex so the preview compiles and renders all rows",
-        "./gradlew :wear:assembleDebug completes without error",
+        "app/src/main/java/com/pl/pulselab/presentation/auth/AuthViewModel.kt created",
+        "AuthUiState sealed class defined with three objects: Loading, SignedOut, SignedIn",
+        "AuthViewModel.uiState: StateFlow<AuthUiState> derived by combining Clerk.isInitialized and Clerk.sessionFlow using combine() — identical logic to wear/src/main/java/com/pl/pulselab/presentation/AuthViewModel.kt",
+        "AuthViewModel exposes fun signOut() that launches viewModelScope.launch { Clerk.auth.signOut() }",
+        "./gradlew :app:assembleDebug completes without error",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Only touches wear/src/main/java/com/pl/pulselab/presentation/home/HomeScreen.kt. The data (hrv, spo2, stressIndex) already exists in HomeUiState.Monitoring — this is a pure UI display change. Do not touch HomeViewModel, WearDataSender, or any data layer file."
+      "notes": "This is a near-identical copy of wear/src/main/java/com/pl/pulselab/presentation/AuthViewModel.kt — only the package declaration changes from com.pl.pulselab.presentation to com.pl.pulselab.presentation.auth. Use SharingStarted.WhileSubscribed(5_000) and initialValue = AuthUiState.Loading in stateIn(), same as the wear version."
     },
     {
       "id": "US-002",
-      "title": "Show phone-connection indicator when no phone node is found",
-      "description": "As a researcher, I want to see a subtle indicator on the watch screen when the phone is not reachable so I know whether data is being relayed before a study begins.",
+      "title": "Create phone SignInViewModel with email + password support",
+      "description": "As a developer, I need a ViewModel that handles email+password sign-in via Clerk so the UI layer stays free of SDK calls.",
       "acceptanceCriteria": [
-        "WearDataSender.send() return type changed from Unit to Boolean — returns true if connectedNodes is non-empty and all sendMessage calls succeed; returns false if nodes list is empty or any exception is caught (existing silent catch behaviour is preserved — no exception propagates)",
-        "HomeUiState.Monitoring data class gains one new field: val phoneReachable: Boolean? = null (default null means no send has been attempted yet)",
-        "In HomeViewModel, the launch { wearDataSender.send(...) } block captures the Boolean return value and calls _uiState.value = updated.copy(phoneReachable = result, readingsSent = updated.readingsSent + 1)",
-        "HomeScreenContent Monitoring branch shows a phone icon row: use Icons.Default.PhoneAndroid with tint MaterialTheme.colorScheme.primary when phoneReachable == true; tint MaterialTheme.colorScheme.error when phoneReachable == false; the row is omitted entirely (no item added) when phoneReachable == null",
-        "A second preview function PreviewMonitoringNoPhone() added showing the Monitoring state with phoneReachable = false",
-        "./gradlew :wear:assembleDebug completes without error",
+        "app/src/main/java/com/pl/pulselab/presentation/auth/SignInViewModel.kt created",
+        "SignInUiState sealed class defined with Idle, Loading, and Error(val message: String) — same shape as wear/src/main/java/com/pl/pulselab/presentation/signin/SignInViewModel.kt",
+        "ViewModel exposes email: StateFlow<String>, password: StateFlow<String>, emailError: StateFlow<String?>, passwordError: StateFlow<String?>",
+        "onEmailChange(value: String) updates _email and clears _emailError",
+        "onPasswordChange(value: String) updates _password, clears _passwordError, and resets Error state to Idle",
+        "validate(): Boolean checks email is non-blank and contains '@'; checks password is non-blank; sets field errors and returns false if invalid",
+        "signInWithPassword() calls Clerk.auth.signInWithPassword { identifier = email.value; password = password.value } inside viewModelScope.launch; on ClerkResult.Failure clears password field and sets SignInUiState.Error with first error message or throwable message; on ClerkResult.Success sets SignInUiState.Idle",
+        "./gradlew :app:assembleDebug completes without error",
         "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Touches three files: WearDataSender.kt (return type + Boolean logic), HomeViewModel.kt (capture return value, update state), HomeScreen.kt (render phone icon). HomeUiState.Monitoring already has a readingsSent field — add phoneReachable alongside it. Icons.Default.PhoneAndroid is available from the material-icons-core artifact already in the wear module."
+      "notes": "Mirror the wear SignInViewModel exactly except: no Google OAuth method yet (added in US-003). Password must be cleared on failure: _password.value = \"\". Error message priority: result.error?.errors?.firstOrNull()?.message ?: result.throwable?.message ?: \"Sign in failed\"."
+    },
+    {
+      "id": "US-003",
+      "title": "Add Google OAuth sign-in to SignInViewModel",
+      "description": "As a researcher, I want to sign in with my Google account so I don't have to manage a separate password.",
+      "acceptanceCriteria": [
+        "SignInViewModel gains a signInWithGoogle(activity: Activity) method",
+        "Method sets _uiState to Loading, then calls the Clerk Android SDK OAuth method for Google — use Clerk.auth.authenticateWithOAuth or the equivalent in libs.clerk.android.api; check the SDK source or docs for the exact method signature",
+        "On success: _uiState set to Idle (Clerk session update propagates automatically to AuthViewModel)",
+        "On failure: _uiState set to SignInUiState.Error with a human-readable message",
+        "./gradlew :app:assembleDebug completes without error",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Depends on US-002. The exact Clerk Android SDK method for OAuth may be Clerk.auth.authenticateWithOAuth { provider = OAuthProvider.GOOGLE } or similar — check the actual installed SDK version in libs.versions.toml (clerk entry) and inspect the Clerk.auth object for the available OAuth method. The activity parameter is needed to launch the OAuth browser intent."
+    },
+    {
+      "id": "US-004",
+      "title": "Create phone SignInScreen UI (email + password + Google)",
+      "description": "As a researcher, I want a sign-in screen on the phone app so I can authenticate before the monitoring data is sent to the backend.",
+      "acceptanceCriteria": [
+        "app/src/main/java/com/pl/pulselab/presentation/auth/SignInScreen.kt created",
+        "Split into SignInScreen(viewModel: SignInViewModel = viewModel()) stateful wrapper and SignInScreenContent(...) stateless composable — same pattern as StatusScreen.kt",
+        "SignInScreenContent contains: email TextField, password TextField with visualTransformation = PasswordVisualTransformation(), a Sign In Button, an 'or' HorizontalDivider row, and a Continue with Google OutlinedButton",
+        "Email field shows emailError string in red Text below the field when non-null",
+        "Password field shows passwordError string in red Text below the field when non-null",
+        "SignInUiState.Error message displayed as red Text above the Sign In button",
+        "CircularProgressIndicator replaces the Sign In and Google buttons while SignInUiState.Loading",
+        "Sign In button calls: if (viewModel.validate()) viewModel.signInWithPassword()",
+        "Google button calls: viewModel.signInWithGoogle(LocalContext.current as Activity)",
+        "Screen uses the same color palette as StatusScreen.kt: background Navy (0xFF0A1628), primary Teal (0xFF00BFA5), text TextPrimary (0xFFF0F4F8)",
+        "./gradlew :app:assembleDebug completes without error",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Depends on US-002 and US-003. Use androidx.compose.material3.TextField (standard phone component — NOT wear RemoteInput). The color constants Navy, Teal, TextPrimary are already defined as private vals in StatusScreen.kt — either reuse by making them internal/package-level, or redefine locally in SignInScreen.kt. Do not import any wear.compose artifacts."
+    },
+    {
+      "id": "US-005",
+      "title": "Wire MainActivity to show SignInScreen or StatusScreen based on auth state",
+      "description": "As a researcher, I want the app to send me to the sign-in screen when I'm not authenticated and directly to the monitoring screen when I am.",
+      "acceptanceCriteria": [
+        "MainActivity creates AuthViewModel via viewModel() and SignInViewModel via viewModel()",
+        "MainActivity collects authViewModel.uiState with collectAsState()",
+        "AuthUiState.Loading renders a full-screen Box(Modifier.fillMaxSize().background(Navy)) with CircularProgressIndicator(color = Teal) centered",
+        "AuthUiState.SignedOut renders SignInScreen(viewModel = signInViewModel)",
+        "AuthUiState.SignedIn renders StatusScreen(viewModel = statusViewModel, onSignOut = { authViewModel.signOut() }) — statusViewModel also created via viewModel()",
+        "No explicit navigation calls — state change alone drives the screen transition",
+        "./gradlew :app:assembleDebug completes without error",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Depends on US-001, US-004, and US-006. authViewModel.signOut() is a regular fun (not suspend) that internally launches a coroutine — it is safe to call from a lambda. Navy color for the loading background: Color(0xFF0A1628). Import androidx.compose.runtime.collectAsState and androidx.compose.runtime.getValue."
+    },
+    {
+      "id": "US-006",
+      "title": "Add sign-out button to StatusScreen",
+      "description": "As a researcher, I want to sign out of the app from the monitoring screen so I can hand the device to another participant.",
+      "acceptanceCriteria": [
+        "StatusScreen(viewModel: StatusViewModel) signature gains onSignOut: () -> Unit parameter",
+        "StatusScreenContent(...) gains onSignOut: () -> Unit parameter",
+        "A sign-out TextButton with text 'Sign out' and tint TextSecondary (0xFF8A9BB0) is added at the top-right corner of StatusScreenContent — use a Box with Alignment.TopEnd wrapping the existing Column, or add a Row header above the Column",
+        "Tapping the button calls onSignOut()",
+        "Both @Preview functions in StatusScreen.kt updated to pass onSignOut = {} to StatusScreenContent",
+        "StatusScreen(viewModel) passes onSignOut to StatusScreenContent",
+        "./gradlew :app:assembleDebug completes without error",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Depends on US-001. After signOut() is called, Clerk.sessionFlow emits null, AuthViewModel.uiState becomes SignedOut, and MainActivity automatically renders SignInScreen — no explicit navigation needed. The onSignOut lambda passed from MainActivity will be authViewModel.signOut() which is a non-suspend fun."
     }
   ]
 }

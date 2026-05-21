@@ -110,7 +110,30 @@
 - local.properties is the right place for secrets (CLERK_PUBLISHABLE_KEY); already gitignored
 - Build requires `import java.util.Properties` at top of build.gradle.kts when reading local.properties
 - libs.versions.toml alias for `clerk-android-api` resolves to `libs.clerk.android.api` (dots → hyphens in alias name)
+- Google OAuth in Clerk uses `Clerk.auth.signInWithOAuth(OAuthProvider.GOOGLE)` — no Activity param needed by SDK; `OAuthProvider` is an enum in `com.clerk.api.sso`
+- Phone app auth screens go in `presentation/auth/` package; wear auth screens go in `presentation/signin/`
 
+---
+
+## 2026-05-21 - US-001 through US-006 (ralph/phone-auth)
+- What was implemented:
+  - US-001: `app/src/main/java/com/pl/pulselab/presentation/auth/AuthViewModel.kt` — mirrors wear AuthViewModel, adds `signOut()` fun
+  - US-002: `app/.../presentation/auth/SignInViewModel.kt` — email+password sign-in with validation, StateFlows, `signInWithPassword()`
+  - US-003: Added `signInWithGoogle(activity: Activity)` to SignInViewModel using `Clerk.auth.signInWithOAuth(OAuthProvider.GOOGLE)`
+  - US-004: `app/.../presentation/auth/SignInScreen.kt` — stateful+stateless split, email/password TextFields, error display, Google OutlinedButton, loading CircularProgressIndicator
+  - US-005: Rewrote `app/.../MainActivity.kt` — observes `AuthViewModel.uiState`, renders Loading/SignedOut/SignedIn screens with no explicit navigation
+  - US-006: Added `onSignOut: () -> Unit` to `StatusScreen` and `StatusScreenContent`, added TopEnd TextButton "Sign out"
+- Files changed:
+  - app/src/main/java/com/pl/pulselab/presentation/auth/AuthViewModel.kt (new)
+  - app/src/main/java/com/pl/pulselab/presentation/auth/SignInViewModel.kt (new)
+  - app/src/main/java/com/pl/pulselab/presentation/auth/SignInScreen.kt (new)
+  - app/src/main/java/com/pl/pulselab/MainActivity.kt (rewritten)
+  - app/src/main/java/com/pl/pulselab/StatusScreen.kt (added sign-out)
+- **Learnings for future iterations:**
+  - `Clerk.auth.signInWithOAuth(OAuthProvider.GOOGLE)` takes no Activity; `OAuthProvider` is an enum in `com.clerk.api.sso`
+  - Phone Compose uses `androidx.compose.material3.TextField` (not wear RemoteInput chips)
+  - `AuthViewModel.signOut()` is a regular fun (not suspend) — safe to call from lambdas
+  - Phone auth screens live in `com.pl.pulselab.presentation.auth`; wear auth screens in `com.pl.pulselab.presentation.signin`
 ---
 
 ## 2026-05-16 - US-001
