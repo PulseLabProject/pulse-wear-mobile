@@ -24,7 +24,8 @@ sealed class HomeUiState {
         val spo2: Int?,
         val stressIndex: Int?,
         val sessionId: String,
-        val readingsSent: Int
+        val readingsSent: Int,
+        val phoneReachable: Boolean? = null
     ) : HomeUiState()
 
     data class Error(val message: String) : HomeUiState()
@@ -71,9 +72,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         stressIndex = reading.stressIndex,
                         timestamp = reading.timestamp
                     )
-                    wearDataSender.send(getApplication(), bundle)
+                    val result = wearDataSender.send(getApplication(), bundle)
                     val updated = _uiState.value as? HomeUiState.Monitoring ?: return@launch
-                    _uiState.value = updated.copy(readingsSent = updated.readingsSent + 1)
+                    _uiState.value = updated.copy(phoneReachable = result, readingsSent = updated.readingsSent + 1)
                 }
             }
             .launchIn(viewModelScope)

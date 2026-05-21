@@ -1,9 +1,13 @@
 package com.pl.pulselab.presentation.home
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
@@ -11,6 +15,7 @@ import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.EdgeButton
+import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
@@ -124,6 +129,20 @@ fun HomeScreenContent(
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
+                        if (state.phoneReachable != null) {
+                            item {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.PhoneAndroid,
+                                        contentDescription = "Phone connection",
+                                        tint = if (state.phoneReachable)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
                         item {
                             Button(onClick = onStop, modifier = Modifier.fillMaxWidth()) {
                                 Text("Stop Session")
@@ -162,6 +181,20 @@ fun PreviewMonitoring() {
         uiState = HomeUiState.Monitoring(
             bpm = 78.0, hrv = 55, spo2 = 98, stressIndex = 30,
             sessionId = "preview", readingsSent = 12
+        ),
+        onStart = {},
+        onStop = {}
+    )
+}
+
+@WearPreviewDevices
+@Composable
+fun PreviewMonitoringNoPhone() {
+    HomeScreenContent(
+        uiState = HomeUiState.Monitoring(
+            bpm = 72.0, hrv = 42, spo2 = 97, stressIndex = 55,
+            sessionId = "preview-no-phone", readingsSent = 3,
+            phoneReachable = false
         ),
         onStart = {},
         onStop = {}
