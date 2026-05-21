@@ -1,6 +1,7 @@
 package com.pl.pulselab.presentation.home
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pl.pulselab.data.health.HeartRateRepository
@@ -14,6 +15,8 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import java.util.UUID
+
+private const val TAG = "HomeViewModel"
 
 sealed class HomeUiState {
     object Idle : HomeUiState()
@@ -57,6 +60,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             .onEach { reading ->
                 val current = _uiState.value as? HomeUiState.Monitoring ?: return@onEach
 
+                Log.d(TAG, "Reading — BPM=${reading.bpm.toInt()} HRV=${reading.hrv}ms SpO2=${reading.spo2}% Stress=${reading.stressIndex}")
+
                 _uiState.value = current.copy(
                     bpm = reading.bpm,
                     hrv = reading.hrv,
@@ -73,6 +78,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         timestamp = reading.timestamp
                     )
                     val result = wearDataSender.send(getApplication(), bundle)
+                    Log.d(TAG, "Send result — phoneReachable=$result readingsSent=${current.readingsSent + 1}")
                     val updated = _uiState.value as? HomeUiState.Monitoring ?: return@launch
                     _uiState.value = updated.copy(phoneReachable = result, readingsSent = updated.readingsSent + 1)
                 }

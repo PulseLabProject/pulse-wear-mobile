@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Bloodtype
+import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Psychology
@@ -51,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pl.pulselab.BuildConfig
 import com.pl.pulselab.model.SensorBundle
 import com.pl.pulselab.presentation.status.StatusUiState
 import com.pl.pulselab.presentation.status.StatusViewModel
@@ -70,11 +73,17 @@ private data class SensorReading(val icon: ImageVector, val label: String, val v
 @Composable
 fun StatusScreen(viewModel: StatusViewModel) {
     val uiState by viewModel.statusUiState.collectAsState()
-    StatusScreenContent(uiState = uiState)
+    StatusScreenContent(
+        uiState = uiState,
+        onInjectDebugReading = { viewModel.injectDebugReading() }
+    )
 }
 
 @Composable
-fun StatusScreenContent(uiState: StatusUiState) {
+fun StatusScreenContent(
+    uiState: StatusUiState,
+    onInjectDebugReading: (() -> Unit)? = null
+) {
     var visible by remember { mutableStateOf(false) }
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
@@ -235,6 +244,36 @@ fun StatusScreenContent(uiState: StatusUiState) {
 
             Spacer(Modifier.height(24.dp))
             HorizontalDivider(color = DividerColor)
+
+            if (BuildConfig.DEBUG && onInjectDebugReading != null) {
+                Spacer(Modifier.height(20.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF1A1A2E))
+                        .clickable { onInjectDebugReading() }
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.Outlined.BugReport,
+                        contentDescription = null,
+                        tint = Color(0xFFFFB74D),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Inject debug reading",
+                        color = Color(0xFFFFB74D),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Spacer(Modifier.height(20.dp))
+                HorizontalDivider(color = DividerColor)
+            }
 
             Text(
                 "A coleta ocorre automaticamente em segundo plano. \nEste app não requer interação contínua.",

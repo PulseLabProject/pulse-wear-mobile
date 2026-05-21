@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import kotlin.random.Random
 
 data class StatusUiState(
     val bundle: SensorBundle? = null,
@@ -29,6 +30,16 @@ class StatusViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _statusUiState = MutableStateFlow(StatusUiState())
     val statusUiState: StateFlow<StatusUiState> = _statusUiState.asStateFlow()
+
+    fun injectDebugReading() {
+        SensorDataStore.sensorFlow.value = SensorBundle(
+            bpm = Random.nextInt(60, 110),
+            hrv = Random.nextInt(30, 80),
+            spo2 = Random.nextInt(95, 100),
+            stressIndex = Random.nextInt(0, 100),
+            timestamp = System.currentTimeMillis()
+        )
+    }
 
     init {
         viewModelScope.launch {
