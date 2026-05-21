@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -71,10 +72,11 @@ private val Red = Color(0xFFEF5350)
 private data class SensorReading(val icon: ImageVector, val label: String, val value: String, val unit: String)
 
 @Composable
-fun StatusScreen(viewModel: StatusViewModel) {
+fun StatusScreen(viewModel: StatusViewModel, onSignOut: () -> Unit = {}) {
     val uiState by viewModel.statusUiState.collectAsState()
     StatusScreenContent(
         uiState = uiState,
+        onSignOut = onSignOut,
         onInjectDebugReading = { viewModel.injectDebugReading() }
     )
 }
@@ -82,6 +84,7 @@ fun StatusScreen(viewModel: StatusViewModel) {
 @Composable
 fun StatusScreenContent(
     uiState: StatusUiState,
+    onSignOut: () -> Unit = {},
     onInjectDebugReading: (() -> Unit)? = null
 ) {
     var visible by remember { mutableStateOf(false) }
@@ -129,6 +132,15 @@ fun StatusScreenContent(
             .background(Navy)
             .alpha(alpha)
     ) {
+        TextButton(
+            onClick = onSignOut,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 8.dp, end = 8.dp)
+        ) {
+            Text("Sign out", color = TextSecondary, fontSize = 13.sp)
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -321,7 +333,7 @@ private fun ReadingCard(reading: SensorReading) {
 @Preview(showSystemUi = true)
 @Composable
 fun StatusScreenPreview() {
-    StatusScreenContent(uiState = StatusUiState())
+    StatusScreenContent(uiState = StatusUiState(), onSignOut = {})
 }
 
 @Preview(showSystemUi = true)
@@ -333,6 +345,7 @@ fun StatusScreenMonitoringPreview() {
             isSyncing = false,
             lastSyncTime = "14:32",
             syncError = null
-        )
+        ),
+        onSignOut = {}
     )
 }
