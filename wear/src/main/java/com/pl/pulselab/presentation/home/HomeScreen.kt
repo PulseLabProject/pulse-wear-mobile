@@ -91,15 +91,34 @@ fun HomeScreenContent(
 
                     is HomeUiState.Monitoring -> {
                         item {
-                            // state.bpm is null for the first second while the sensor warms up
                             Text(
-                                text = state.bpm?.let { "%.0f BPM".format(it) } ?: "...",
-                                style = MaterialTheme.typography.displayLarge,
+                                text = "HR: ${state.bpm?.let { "%.0f".format(it) } ?: "..."} BPM",
+                                style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
                         item {
-                            // Counts how many readings reached the backend — useful for debugging
+                            Text(
+                                text = "HRV: ${state.hrv?.toString() ?: "..."} ms",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        item {
+                            Text(
+                                text = "SpO2: ${state.spo2?.toString() ?: "..."} %",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        item {
+                            Text(
+                                text = "Stress: ${state.stressIndex?.toString() ?: "..."} / 100",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        item {
                             Text(
                                 text = "Sent: ${state.readingsSent}",
                                 style = MaterialTheme.typography.bodySmall
