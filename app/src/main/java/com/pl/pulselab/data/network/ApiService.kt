@@ -7,7 +7,7 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 
 interface ApiService {
-    @POST("readings")
+    @POST("v1/readings")
     suspend fun postReading(@Body bundle: SensorBundle): Response<Unit>
 
     @GET("server/ping")
